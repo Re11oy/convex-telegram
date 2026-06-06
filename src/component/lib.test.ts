@@ -2,34 +2,12 @@ import { expect, test } from "vitest";
 import { api } from "./_generated/api.js";
 import { initConvexTest } from "./setup.test.js";
 
-test("saves bot credentials and updates an existing username", async () => {
-  const t = initConvexTest();
-
-  const botUsername = await t.mutation(api.lib.saveBotCredentials, {
-    token: "first-token",
-    botUsername: "demo_bot",
-  });
-  const sameBotUsername = await t.mutation(api.lib.saveBotCredentials, {
-    token: "rotated-token",
-    botUsername: "demo_bot",
-  });
-
-  expect(botUsername).toBe("@demo_bot");
-  expect(sameBotUsername).toBe(botUsername);
-  expect(await t.query(api.lib.getBotToken, { botUsername })).toBe(
-    "rotated-token",
-  );
-});
-
 test("stores, rotates, finds, and deletes webhook secrets", async () => {
   const t = initConvexTest();
-  const botUsername = await t.mutation(api.lib.saveBotCredentials, {
-    token: "bot-token",
-    botUsername: "webhook_bot",
-  });
+  const botUsername = "@webhook_bot";
 
   await t.mutation(api.lib.saveWebhookSecret, {
-    botUsername,
+    botUsername: "webhook_bot",
     webhookSecretToken: "secret-one",
   });
   expect(
@@ -76,28 +54,20 @@ test("stores, rotates, finds, and deletes webhook secrets", async () => {
   );
 });
 
-test("requires saved bot credentials before storing a webhook secret", async () => {
+test("normalizes bot usernames when storing webhook secrets", async () => {
   const t = initConvexTest();
 
-  await expect(
-    t.mutation(api.lib.saveWebhookSecret, {
-      botUsername: "missing_bot",
-      webhookSecretToken: "secret",
-    }),
-  ).rejects.toThrow("Bot missing_bot not found in database");
-});
-
-test("deletes bot credentials idempotently", async () => {
-  const t = initConvexTest();
-  const botUsername = await t.mutation(api.lib.saveBotCredentials, {
-    token: "bot-token",
-    botUsername: "delete_bot",
+  await t.mutation(api.lib.saveWebhookSecret, {
+    botUsername: "normalize_bot",
+    webhookSecretToken: "secret",
   });
 
-  expect(await t.mutation(api.lib.deleteBotCredentials, { botUsername })).toBe(
-    true,
-  );
-  expect(await t.mutation(api.lib.deleteBotCredentials, { botUsername })).toBe(
-    false,
-  );
+  expect(
+    await t.query(api.lib.findWebhookSecret, {
+      webhookSecretToken: "secret",
+    }),
+  ).toEqual({
+    isValid: true,
+    botUsername: "@normalize_bot",
+  });
 });

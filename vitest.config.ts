@@ -5,7 +5,7 @@ export default defineConfig({
     environment: "edge-runtime",
     include: ["src/**/*.test.ts"],
     typecheck: {
-      tsconfig: "./tsconfig.json",
+      tsconfig: "./tsconfig.test.json",
     },
   },
 });

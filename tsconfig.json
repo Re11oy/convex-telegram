@@ -1,18 +1,24 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "lib": ["ES2023", "DOM"],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
+    "lib": ["ES2021", "dom", "DOM.Iterable"],
+    "jsx": "react-jsx",
+
+    "module": "Node16",
+    "moduleResolution": "NodeNext",
+
     "strict": true,
     "skipLibCheck": true,
     "isolatedModules": true,
     "allowJs": true,
+    "checkJs": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
-    "types": ["vite/client", "vitest/globals", "node"]
+    "verbatimModuleSyntax": true,
+    "noErrorTruncation": true,
+
+    "types": ["node"],
+    "noEmit": true
   },
-  "include": ["src/**/*", "vitest.config.ts"],
-  "exclude": ["dist", "node_modules"]
+  "include": ["./src/**/*"]
 }

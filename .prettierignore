@@ -1,0 +1,5 @@
+dist
+.convex
+**/_generated/**
+pnpm-lock.yaml
+CHANGELOG.md

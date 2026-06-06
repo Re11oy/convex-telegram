@@ -4,6 +4,8 @@ node_modules
 # Build output
 dist
 *.tsbuildinfo
+*.tgz
+.eslintcache
 
 # Logs
 logs
@@ -18,6 +20,9 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+
+# Convex local backend state
+.convex
 
 # Editor / OS
 .vscode/*

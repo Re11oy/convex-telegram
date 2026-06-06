@@ -6,9 +6,8 @@
     "declarationMap": true,
     "sourceMap": true,
     "rootDir": "./src",
-    "outDir": "./dist",
-    "types": ["node"]
+    "outDir": "./dist"
   },
-  "include": ["src/**/*"],
-  "exclude": ["dist", "node_modules", "**/*.test.ts"]
+  "include": ["./src/**/*"],
+  "exclude": ["src/**/*.test.*", "src/test.ts"]
 }

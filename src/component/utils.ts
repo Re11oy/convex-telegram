@@ -1,15 +1,4 @@
-import type { TelegramBotUsername } from "../client/types";
-
-export function makeWebhookSecretToken() {
-  const alphabet =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
-  const values = new Uint8Array(48);
-  crypto.getRandomValues(values);
-
-  return Array.from(values, (value) => alphabet[value % alphabet.length]).join(
-    "",
-  );
-}
+type TelegramBotUsername = string & { __isBotUsername: true };
 
 export function normalizeUsername(username: string | TelegramBotUsername) {
   if (username.startsWith("@")) {

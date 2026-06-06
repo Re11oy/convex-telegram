@@ -8,6 +8,7 @@ export const modules = {
   ...import.meta.glob("./convex.config.ts"),
   ...import.meta.glob("./lib.ts"),
   ...import.meta.glob("./schema.ts"),
+  ...import.meta.glob("./utils.ts"),
 };
 
 export function initConvexTest() {

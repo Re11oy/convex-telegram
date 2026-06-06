@@ -4,239 +4,139 @@ import type {
   TelegramAPIResponse,
   TelegramUpdate,
 } from "@gramio/types";
-import { httpActionGeneric } from "convex/server";
+import {
+  type GenericActionCtx,
+  type GenericDataModel,
+  httpActionGeneric,
+} from "convex/server";
 import type { ComponentApi } from "../component/_generated/component.js";
-import { makeWebhookSecretToken } from "../component/utils";
+import { normalizeUsername } from "../component/utils.js";
 import type {
   ActionCtx,
   HttpRouter,
   RegisterRoutesConfig,
   RunnableTelegramUpdateHandler,
+  TelegramBot,
   TelegramBotUsername,
   TelegramUpdateEvent,
+} from "./types.js";
+
+export type {
+  ActionCtx,
+  HttpRouter,
+  RegisterRoutesConfig,
+  TelegramBot,
+  TelegramBotUsername,
+  TelegramUpdateEvent,
+  TelegramUpdateForEvent,
+  TelegramUpdateHandler,
+  TelegramUpdateHandlers,
 } from "./types.js";
 
 const TBA_BASE_URL = "https://api.telegram.org/bot";
 
 export type TelegramComponent = ComponentApi;
 
-/**
- * Client wrapper for the `telegram` Convex component.
- *
- * ## 1. Register the component (`convex/convex.config.ts`)
- *
- * ```ts
- * import { defineApp } from "convex/server";
- * import telegram from "convex-telegram/convex.config";
- *
- * const app = defineApp();
- * app.use(telegram);
- * export default app;
- * ```
- *
- * ## 2. Instantiate (e.g. `convex/telegram.ts`)
- *
- * ```ts
- * import { components } from "./_generated/api";
- * import { TelegramAPI } from "convex-telegram";
- *
- * export const telegram = new TelegramAPI(components.telegram);
- * ```
- *
- * ## 3. Register the webhook route (`convex/http.ts`)
- *
- * ```ts
- * import { httpRouter } from "convex/server";
- * import { internal } from "./_generated/api";
- * import { telegram } from "./telegram";
- *
- * const http = httpRouter();
- *
- * telegram.registerRoutes(http, {
- *   events: {
- *     message: async (ctx, botUsername, update) => {
- *       await ctx.runAction(internal.messages.store, {
- *         botUsername,
- *         chatId: update.message.chat.id,
- *         text: update.message.text,
- *       });
- *     },
- *   },
- * });
- *
- * export default http;
- * ```
- *
- * ## 4. Save credentials and subscribe a bot
- *
- * ```ts
- * const botUsername = await telegram.saveBotCredentials(ctx, {
- *   token: process.env.TELEGRAM_BOT_TOKEN!,
- * });
- * await telegram.subscribeForUpdates(ctx, botUsername);
- * ```
- *
- * ## 5. Send a message
- *
- * ```ts
- * const bot = await telegram.bot(ctx, botUsername);
- * await bot.sendMessage({
- *   chat_id: update.message.chat.id,
- *   text: "Hello!",
- * });
- * ```
- */
-export class TelegramAPI {
+export type TelegramOptions = {
+  token?: string;
+  webhookPath?: string;
+};
+
+export type SetupWebhookOptions = {
+  allowedUpdates?: TelegramUpdateEvent[];
+  dropPendingUpdates?: boolean;
+  url?: string;
+};
+
+export type SetupWebhookResult = {
+  botUsername: TelegramBotUsername;
+  webhookUrl: string;
+};
+
+export type DeleteWebhookOptions = {
+  dropPendingUpdates?: boolean;
+};
+
+export class Telegram {
+  public readonly api: APIMethods;
   private readonly webhookPath: string;
 
-  /**
-   * Creates a Telegram component client.
-   *
-   * @param component The component to use, like `components.telegram` from
-   * `./_generated/api.ts`.
-   * @param options to use for this component.
-   */
   constructor(
     public readonly component: TelegramComponent,
-    options?: {
-      /**
-       * Optional webhook path. Defaults to "/telegram/webhook"
-       *
-       * HTTPS URL or app-relative path Telegram will POST updates to.
-       * App-relative paths are prefixed with CONVEX_SITE_URL.
-       */
-      webhookPath?: string;
-    },
+    options?: TelegramOptions,
   ) {
-    this.webhookPath = options?.webhookPath ?? "/telegram/webhook";
+    this.api = botApiProxy(() => getRequiredToken(options?.token));
+    this.webhookPath = getWebhookPath(options?.webhookPath);
   }
 
-  async saveBotCredentials(
+  async setupWebhook(
     ctx: ActionCtx,
-    args: {
-      token: string;
-    },
-  ) {
-    const token = args.token.trim();
-    if (token === "") {
-      throw new Error("Telegram bot token is required");
-    }
-
-    const bot = botApiProxy(token);
-    const info = await bot.getMe();
-    if (!info.is_bot || !info.username) {
-      throw new Error("Failed to fetch bot details");
-    }
-
-    const botUsername = await ctx.runMutation(
-      this.component.lib.saveBotCredentials,
-      {
-        token,
-        botUsername: info.username,
-      },
-    );
-    return botUsername as TelegramBotUsername;
-  }
-
-  async subscribeForUpdates(
-    ctx: ActionCtx,
-    botUsername: string,
-    args?: {
-      /** A list of update types the bot is subscribed to. Default: ["message"] */
-      allowedUpdates?: TelegramUpdateEvent[];
-      /** Drop all pending updates when registering the webhook. */
-      dropPendingUpdates?: boolean;
-    },
-  ) {
+    options?: SetupWebhookOptions,
+  ): Promise<SetupWebhookResult> {
     const { dropPendingUpdates = true, allowedUpdates = ["message"] } =
-      args ?? {};
+      options ?? {};
+    const botUsername = await this.getBotUsername();
+    const webhookUrl = getWebhookUrl(options?.url, this.webhookPath);
+    const info = await this.api.getWebhookInfo();
+    const webhookSecretToken = makeWebhookSecretToken();
 
-    const token = await ctx.runQuery(this.component.lib.getBotToken, {
-      botUsername,
-    });
-    const bot = botApiProxy(token);
-    const info = await bot.getWebhookInfo();
-    const webhookSet = info.url !== "";
-
-    if (webhookSet) {
-      console.warn("Webhook already configured, delete old one");
-      await bot.deleteWebhook({ drop_pending_updates: dropPendingUpdates });
+    if (info.url !== "") {
+      await this.api.deleteWebhook({
+        drop_pending_updates: dropPendingUpdates,
+      });
     }
 
-    // Set up new webhook
-    const secret = makeWebhookSecretToken();
-    await bot.setWebhook({
-      url: `${process.env.CONVEX_SITE_URL}${this.webhookPath}`,
-      secret_token: secret,
+    await this.api.setWebhook({
+      url: webhookUrl,
+      secret_token: webhookSecretToken,
       allowed_updates: allowedUpdates,
       drop_pending_updates: dropPendingUpdates,
     });
     await ctx.runMutation(this.component.lib.saveWebhookSecret, {
       botUsername,
-      webhookSecretToken: secret,
+      webhookSecretToken,
     });
-    console.info("New webhook registered");
+
+    return { botUsername, webhookUrl };
   }
 
-  async unsubscribe(
+  async deleteWebhook(
     ctx: ActionCtx,
-    botUsername: string,
-    args?: {
-      /** Drop all pending updates when removing the webhook. */
-      dropPendingUpdates?: boolean;
-    },
-  ) {
-    const { dropPendingUpdates = true } = args ?? {};
+    options?: DeleteWebhookOptions,
+  ): Promise<void> {
+    const { dropPendingUpdates = true } = options ?? {};
+    const botUsername = await this.getBotUsername();
 
-    const token = await ctx.runQuery(this.component.lib.getBotToken, {
-      botUsername,
+    await this.api.deleteWebhook({
+      drop_pending_updates: dropPendingUpdates,
     });
-    const bot = botApiProxy(token);
-    const info = await bot.getWebhookInfo();
-    const webhookSet = info.url !== "";
-
-    if (webhookSet) {
-      await bot.deleteWebhook({ drop_pending_updates: dropPendingUpdates });
-
-      console.warn("Webhook was deleted");
-    }
-
     await ctx.runMutation(this.component.lib.deleteWebhookSecret, {
       botUsername,
     });
   }
 
-  /**
-   * Register an HTTP route that Telegram will POST updates to.
-   *
-   * The generated handler:
-   * 1. Reads the `X-Telegram-Bot-Api-Secret-Token` header
-   * 2. Uses the secret to find the registered bot — returns 401 if missing
-   * 3. Parses the request body as a Telegram Update
-   * 4. Calls handlers so your app can handle the event
-   *
-   * Call this in `convex/http.ts` before exporting the router.
-   */
   registerRoutes(http: HttpRouter, config?: RegisterRoutesConfig) {
-    registerRoutes(http, this.component, this.webhookPath, config);
+    registerRoutes(http, this.component, this.api, this.webhookPath, config);
   }
 
-  async bot(ctx: ActionCtx, botUsername: string) {
-    const token = await ctx.runQuery(this.component.lib.getBotToken, {
-      botUsername,
-    });
+  private async getBotUsername() {
+    const info = await this.api.getMe();
+    if (!info.is_bot || !info.username) {
+      throw new Error("Failed to fetch bot details");
+    }
 
-    return botApiProxy(token);
+    return normalizeUsername(info.username);
   }
 }
 
 function registerRoutes(
   http: HttpRouter,
   component: ComponentApi,
+  api: APIMethods,
   webhookPath: string,
   config?: RegisterRoutesConfig,
 ) {
-  const { events = {}, onEvent } = config ?? {};
+  const { handlers = {}, onUpdate } = config ?? {};
 
   http.route({
     path: webhookPath,
@@ -261,22 +161,22 @@ function registerRoutes(
       }
       try {
         await callHandler(
-          onEvent as RunnableTelegramUpdateHandler | undefined,
+          onUpdate as RunnableTelegramUpdateHandler | undefined,
           ctx,
-          secret.botUsername as TelegramBotUsername,
           update,
+          makeTelegramBot(secret.botUsername, api),
         );
 
         for (const eventType of getUpdateEventTypes(update)) {
           await callHandler(
-            events[eventType] as RunnableTelegramUpdateHandler | undefined,
+            handlers[eventType] as RunnableTelegramUpdateHandler | undefined,
             ctx,
-            secret.botUsername as TelegramBotUsername,
             update,
+            makeTelegramBot(secret.botUsername, api),
           );
         }
       } catch (error) {
-        console.error("❌ Error processing webhook:", error);
+        console.error("Error processing Telegram webhook:", error);
         return new Response("Error processing webhook", { status: 500 });
       }
 
@@ -300,14 +200,14 @@ function getUpdateEventTypes(update: TelegramUpdate) {
 
 async function callHandler(
   handler: RunnableTelegramUpdateHandler | undefined,
-  ctx: ActionCtx,
-  botUsername: TelegramBotUsername,
+  ctx: GenericActionCtx<GenericDataModel>,
   update: TelegramUpdate,
+  bot: TelegramBot,
 ) {
-  await handler?.(ctx, botUsername, update);
+  await handler?.(ctx, update, bot);
 }
 
-function botApiProxy(token: string) {
+function botApiProxy(getToken: () => string) {
   return new Proxy({} as APIMethods, {
     get: (_target: APIMethods, method: string | symbol) => {
       if (method === "then") {
@@ -315,13 +215,14 @@ function botApiProxy(token: string) {
       }
 
       const apiMethod = method as keyof APIMethods;
-      return async (params: APIMethodParams<typeof apiMethod>) => {
+      return async (params?: APIMethodParams<typeof apiMethod>) => {
+        const token = getToken();
         const response = await fetch(`${TBA_BASE_URL}${token}/${apiMethod}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(params),
+          body: params === undefined ? undefined : JSON.stringify(params),
         });
 
         const data = (await response.json()) as TelegramAPIResponse;
@@ -339,4 +240,57 @@ function botApiProxy(token: string) {
   });
 }
 
-export default TelegramAPI;
+function getRequiredToken(token: string | undefined) {
+  const value = (token ?? process.env.TELEGRAM_BOT_TOKEN ?? "").trim();
+  if (value === "") {
+    throw new Error(
+      "Telegram bot token is required. Pass `token` or set TELEGRAM_BOT_TOKEN.",
+    );
+  }
+  return value;
+}
+
+function getWebhookPath(webhookPath: string | undefined) {
+  const path = webhookPath ?? "/telegram/webhook";
+  if (!path.startsWith("/")) {
+    throw new Error("Telegram webhookPath must start with '/'.");
+  }
+  return path;
+}
+
+function getWebhookUrl(url: string | undefined, webhookPath: string) {
+  if (url !== undefined) {
+    if (!url.startsWith("https://")) {
+      throw new Error("Telegram webhook URL must start with 'https://'.");
+    }
+    return url;
+  }
+
+  const siteUrl = process.env.CONVEX_SITE_URL;
+  if (!siteUrl) {
+    throw new Error(
+      "CONVEX_SITE_URL is required to build the Telegram webhook URL.",
+    );
+  }
+  return `${siteUrl}${webhookPath}`;
+}
+
+function makeTelegramBot(botUsername: string, api: APIMethods): TelegramBot {
+  return {
+    username: normalizeUsername(botUsername),
+    api,
+  };
+}
+
+function makeWebhookSecretToken() {
+  const alphabet =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
+  const values = new Uint8Array(48);
+  crypto.getRandomValues(values);
+
+  return Array.from(values, (value) => alphabet[value % alphabet.length]).join(
+    "",
+  );
+}
+
+export default Telegram;
