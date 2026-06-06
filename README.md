@@ -19,8 +19,6 @@ pnpm add convex-telegram
 # or: npm install convex-telegram
 ```
 
-`convex` is a peer dependency (`>=1.40.0`).
-
 ## Setup
 
 ### 1. Create a bot and set the token

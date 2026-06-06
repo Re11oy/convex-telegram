@@ -67,7 +67,7 @@
     "release": "pnpm version patch && pnpm publish && git push --follow-tags"
   },
   "peerDependencies": {
-    "convex": ">=1.36.0"
+    "convex": ">=1.29.3"
   },
   "dependencies": {
     "@gramio/types": "9.6.1"
