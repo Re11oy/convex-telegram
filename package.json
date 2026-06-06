@@ -1,0 +1,67 @@
+{
+  "name": "convex-telegram",
+  "description": "A Telegram bot component for Convex: store bot credentials, register webhooks, and dispatch typed Telegram updates.",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "keywords": [
+    "convex",
+    "component",
+    "telegram",
+    "bot",
+    "webhook"
+  ],
+  "type": "module",
+  "main": "./dist/client/index.js",
+  "module": "./dist/client/index.js",
+  "types": "./dist/client/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/client/index.d.ts",
+      "default": "./dist/client/index.js"
+    },
+    "./convex.config.js": {
+      "types": "./dist/component/convex.config.d.ts",
+      "default": "./dist/component/convex.config.js"
+    },
+    "./_generated/component.js": {
+      "types": "./dist/component/_generated/component.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --project ./tsconfig.build.json",
+    "build:codegen": "convex codegen --component-dir ./src/component && pnpm build",
+    "build:clean": "rm -rf dist *.tsbuildinfo && pnpm build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --typecheck",
+    "test:watch": "vitest --typecheck",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "prepublishOnly": "pnpm build:clean && pnpm test"
+  },
+  "peerDependencies": {
+    "convex": ">=1.36.0"
+  },
+  "dependencies": {
+    "@gramio/types": "9.6.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.14",
+    "@edge-runtime/vm": "^5.0.0",
+    "@types/node": "^24.12.2",
+    "convex": "^1.36.1",
+    "convex-test": "^0.0.50",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.2",
+    "vitest": "^4.1.5"
+  }
+}
