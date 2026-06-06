@@ -3,27 +3,27 @@ import { v } from "convex/values";
 import { components } from "./_generated/api.js";
 import { action, internalMutation } from "./_generated/server.js";
 
-// Reads the bot token from the TELEGRAM_BOT_TOKEN environment variable.
+// Reads TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET from the environment.
 export const telegram = new Telegram(components.telegram);
 
 // Point Telegram at this deployment's webhook endpoint. Run once after
-// deploying (e.g. from the dashboard or `npx convex run telegram:setupWebhook`).
+// deploying (e.g. `npx convex run telegram:setupWebhook`).
 export const setupWebhook = action({
   args: {},
   returns: v.object({
     botUsername: v.string(),
     webhookUrl: v.string(),
   }),
-  handler: async (ctx) => {
-    return await telegram.setupWebhook(ctx);
+  handler: async () => {
+    return await telegram.setupWebhook();
   },
 });
 
 export const deleteWebhook = action({
   args: {},
   returns: v.null(),
-  handler: async (ctx) => {
-    await telegram.deleteWebhook(ctx);
+  handler: async () => {
+    await telegram.deleteWebhook();
     return null;
   },
 });

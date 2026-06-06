@@ -21,7 +21,13 @@ you drive it from Telegram and the Convex dashboard.
    npx convex env set TELEGRAM_BOT_TOKEN <your-token>
    ```
 
-3. Point Telegram at this deployment's webhook:
+3. (Recommended) set a webhook secret so only Telegram can call your endpoint:
+
+   ```sh
+   npx convex env set TELEGRAM_WEBHOOK_SECRET <random-string>
+   ```
+
+4. Point Telegram at this deployment's webhook:
 
    ```sh
    npx convex run telegram:setupWebhook

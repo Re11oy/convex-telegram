@@ -10,35 +10,41 @@ import {
   httpActionGeneric,
 } from "convex/server";
 import type { ComponentApi } from "../component/_generated/component.js";
-import { normalizeUsername } from "../component/utils.js";
 import type {
-  ActionCtx,
   HttpRouter,
   RegisterRoutesConfig,
   RunnableTelegramUpdateHandler,
   TelegramBot,
-  TelegramBotUsername,
   TelegramUpdateEvent,
 } from "./types.js";
 
 export type {
-  ActionCtx,
   HttpRouter,
   RegisterRoutesConfig,
   TelegramBot,
-  TelegramBotUsername,
   TelegramUpdateEvent,
   TelegramUpdateForEvent,
   TelegramUpdateHandler,
   TelegramUpdateHandlers,
 } from "./types.js";
 
+// https://core.telegram.org/bots/api
 const TBA_BASE_URL = "https://api.telegram.org/bot";
+const DEFAULT_WEBHOOK_PATH = "/telegram/webhook";
 
 export type TelegramComponent = ComponentApi;
 
 export type TelegramOptions = {
+  /** Bot token. Defaults to `TELEGRAM_BOT_TOKEN`. */
   token?: string;
+  /**
+   * Secret used to verify incoming webhook requests. Defaults to
+   * `TELEGRAM_WEBHOOK_SECRET`. When unset, webhook requests are not verified.
+   *
+   * @see https://core.telegram.org/bots/api#setwebhook (`secret_token`)
+   */
+  webhookSecret?: string;
+  /** Webhook route path. Defaults to `/telegram/webhook`. Must start with `/`. */
   webhookPath?: string;
 };
 
@@ -49,7 +55,7 @@ export type SetupWebhookOptions = {
 };
 
 export type SetupWebhookResult = {
-  botUsername: TelegramBotUsername;
+  botUsername: string;
   webhookUrl: string;
 };
 
@@ -58,8 +64,14 @@ export type DeleteWebhookOptions = {
 };
 
 export class Telegram {
+  /**
+   * Typed Telegram Bot API client. Use it to send messages or call any method.
+   *
+   * @see https://core.telegram.org/bots/api#available-methods
+   */
   public readonly api: APIMethods;
   private readonly webhookPath: string;
+  private readonly webhookSecret: string | undefined;
 
   constructor(
     public readonly component: TelegramComponent,
@@ -67,73 +79,64 @@ export class Telegram {
   ) {
     this.api = botApiProxy(() => getRequiredToken(options?.token));
     this.webhookPath = getWebhookPath(options?.webhookPath);
+    this.webhookSecret = getWebhookSecret(options?.webhookSecret);
   }
 
+  /**
+   * Point Telegram at this deployment's webhook endpoint. Run once after
+   * deploying the route registered with {@link registerRoutes}. When a webhook
+   * secret is configured it is sent as `secret_token`.
+   *
+   * @see https://core.telegram.org/bots/api#setwebhook
+   */
   async setupWebhook(
-    ctx: ActionCtx,
     options?: SetupWebhookOptions,
   ): Promise<SetupWebhookResult> {
     const { dropPendingUpdates = true, allowedUpdates = ["message"] } =
       options ?? {};
-    const botUsername = await this.getBotUsername();
-    const webhookUrl = getWebhookUrl(options?.url, this.webhookPath);
-    const info = await this.api.getWebhookInfo();
-    const webhookSecretToken = makeWebhookSecretToken();
-
-    if (info.url !== "") {
-      await this.api.deleteWebhook({
-        drop_pending_updates: dropPendingUpdates,
-      });
+    const me = await this.api.getMe();
+    if (!me.is_bot || !me.username) {
+      throw new Error("Failed to fetch bot details from Telegram getMe.");
     }
+    const webhookUrl = getWebhookUrl(options?.url, this.webhookPath);
 
     await this.api.setWebhook({
       url: webhookUrl,
-      secret_token: webhookSecretToken,
+      secret_token: this.webhookSecret,
       allowed_updates: allowedUpdates,
       drop_pending_updates: dropPendingUpdates,
     });
-    await ctx.runMutation(this.component.lib.saveWebhookSecret, {
-      botUsername,
-      webhookSecretToken,
-    });
 
-    return { botUsername, webhookUrl };
+    return { botUsername: `@${me.username}`, webhookUrl };
   }
 
-  async deleteWebhook(
-    ctx: ActionCtx,
-    options?: DeleteWebhookOptions,
-  ): Promise<void> {
+  /**
+   * Stop receiving updates by removing the webhook from Telegram.
+   *
+   * @see https://core.telegram.org/bots/api#deletewebhook
+   */
+  async deleteWebhook(options?: DeleteWebhookOptions): Promise<void> {
     const { dropPendingUpdates = true } = options ?? {};
-    const botUsername = await this.getBotUsername();
-
-    await this.api.deleteWebhook({
-      drop_pending_updates: dropPendingUpdates,
-    });
-    await ctx.runMutation(this.component.lib.deleteWebhookSecret, {
-      botUsername,
-    });
+    await this.api.deleteWebhook({ drop_pending_updates: dropPendingUpdates });
   }
 
+  /** Mount the HTTP route that receives and dispatches Telegram updates. */
   registerRoutes(http: HttpRouter, config?: RegisterRoutesConfig) {
-    registerRoutes(http, this.component, this.api, this.webhookPath, config);
-  }
-
-  private async getBotUsername() {
-    const info = await this.api.getMe();
-    if (!info.is_bot || !info.username) {
-      throw new Error("Failed to fetch bot details");
-    }
-
-    return normalizeUsername(info.username);
+    registerRoutes(
+      http,
+      this.api,
+      this.webhookPath,
+      this.webhookSecret,
+      config,
+    );
   }
 }
 
 function registerRoutes(
   http: HttpRouter,
-  component: ComponentApi,
   api: APIMethods,
   webhookPath: string,
+  webhookSecret: string | undefined,
   config?: RegisterRoutesConfig,
 ) {
   const { handlers = {}, onUpdate } = config ?? {};
@@ -142,15 +145,13 @@ function registerRoutes(
     path: webhookPath,
     method: "POST",
     handler: httpActionGeneric(async (ctx, request) => {
-      const providedSecret =
-        request.headers.get("X-Telegram-Bot-Api-Secret-Token") ?? "";
-
-      const secret = await ctx.runQuery(component.lib.findWebhookSecret, {
-        webhookSecretToken: providedSecret,
-      });
-
-      if (!secret.isValid) {
-        return new Response("Unauthorized", { status: 401 });
+      if (webhookSecret !== undefined) {
+        const providedSecret = request.headers.get(
+          "X-Telegram-Bot-Api-Secret-Token",
+        );
+        if (providedSecret !== webhookSecret) {
+          return new Response("Unauthorized", { status: 401 });
+        }
       }
 
       let update: TelegramUpdate;
@@ -159,12 +160,14 @@ function registerRoutes(
       } catch {
         return new Response("Bad Request", { status: 400 });
       }
+
+      const bot: TelegramBot = { api };
       try {
         await callHandler(
           onUpdate as RunnableTelegramUpdateHandler | undefined,
           ctx,
           update,
-          makeTelegramBot(secret.botUsername, api),
+          bot,
         );
 
         for (const eventType of getUpdateEventTypes(update)) {
@@ -172,7 +175,7 @@ function registerRoutes(
             handlers[eventType] as RunnableTelegramUpdateHandler | undefined,
             ctx,
             update,
-            makeTelegramBot(secret.botUsername, api),
+            bot,
           );
         }
       } catch (error) {
@@ -250,8 +253,13 @@ function getRequiredToken(token: string | undefined) {
   return value;
 }
 
+function getWebhookSecret(secret: string | undefined) {
+  const value = (secret ?? process.env.TELEGRAM_WEBHOOK_SECRET ?? "").trim();
+  return value === "" ? undefined : value;
+}
+
 function getWebhookPath(webhookPath: string | undefined) {
-  const path = webhookPath ?? "/telegram/webhook";
+  const path = webhookPath ?? DEFAULT_WEBHOOK_PATH;
   if (!path.startsWith("/")) {
     throw new Error("Telegram webhookPath must start with '/'.");
   }
@@ -273,24 +281,6 @@ function getWebhookUrl(url: string | undefined, webhookPath: string) {
     );
   }
   return `${siteUrl}${webhookPath}`;
-}
-
-function makeTelegramBot(botUsername: string, api: APIMethods): TelegramBot {
-  return {
-    username: normalizeUsername(botUsername),
-    api,
-  };
-}
-
-function makeWebhookSecretToken() {
-  const alphabet =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
-  const values = new Uint8Array(48);
-  crypto.getRandomValues(values);
-
-  return Array.from(values, (value) => alphabet[value % alphabet.length]).join(
-    "",
-  );
 }
 
 export default Telegram;

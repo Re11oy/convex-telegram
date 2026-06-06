@@ -1,11 +1,6 @@
-import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+import { defineSchema } from "convex/server";
 
-export default defineSchema({
-  webhooks: defineTable({
-    botUsername: v.string(),
-    webhookSecretToken: v.string(),
-  })
-    .index("by_bot_username", ["botUsername"])
-    .index("by_webhook_secret_token", ["webhookSecretToken"]),
-});
+// The component is stateless: the bot token and webhook secret live in the
+// app's environment, and webhook requests are verified directly against the
+// configured secret. No component tables are needed.
+export default defineSchema({});

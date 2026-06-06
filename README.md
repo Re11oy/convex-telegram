@@ -1,20 +1,16 @@
 # convex-telegram
 
-A [Convex](https://convex.dev) component for Telegram bots. It registers
-webhooks, verifies Telegram webhook requests, dispatches typed updates to your
-app, and gives you direct typed access to the Telegram Bot API.
+A [Convex](https://convex.dev) component for
+[Telegram bots](https://core.telegram.org/bots). Send messages through the typed
+[Generated Telegram Bot API client](https://github.com/gramiojs/types) and, when
+you need to react to users, receive updates through a verified webhook.
 
-The component does not store your bot token. Keep the token in your Convex app
-environment and pass it to the app-side `Telegram` client.
+## What you can do
 
-## Features
-
-- Single-bot setup with `TELEGRAM_BOT_TOKEN`
-- Webhook registration with generated Telegram secret tokens
-- Webhook request verification using `X-Telegram-Bot-Api-Secret-Token`
-- Typed handlers for Telegram update keys like `message`, `callback_query`, and
-  `chat_member`
-- Direct `telegram.api.*` access for any Telegram Bot API method
+- **Send messages** (and call any Bot API method) with the typed
+  `telegram.api.*` client.
+- **Receive updates** (messages, callback queries, …) by registering a webhook
+  route and handling typed updates.
 
 ## Installation
 
@@ -23,11 +19,21 @@ pnpm add convex-telegram
 # or: npm install convex-telegram
 ```
 
-`convex` is a peer dependency (`>=1.36.0`).
+`convex` is a peer dependency (`>=1.40.0`).
 
-## Quick Start
+## Setup
 
-### 1. Add the component
+### 1. Create a bot and set the token
+
+Create a bot with [@BotFather](https://t.me/BotFather)
+([docs](https://core.telegram.org/bots/features#botfather)) to get a token, then
+set it on your deployment:
+
+```bash
+npx convex env set TELEGRAM_BOT_TOKEN <your-bot-token>
+```
+
+### 2. Add the component
 
 `convex/convex.config.ts`:
 
@@ -39,12 +45,6 @@ const app = defineApp();
 app.use(telegram);
 
 export default app;
-```
-
-### 2. Configure the bot token
-
-```bash
-npx convex env set TELEGRAM_BOT_TOKEN=<your-bot-token>
 ```
 
 ### 3. Create the Telegram client
@@ -59,7 +59,49 @@ import { components } from "./_generated/api";
 export const telegram = new Telegram(components.telegram);
 ```
 
-### 4. Register webhook routes
+You can now [send messages](#sending-messages). To also
+[receive messages](#receiving-messages), register a webhook.
+
+## Sending messages
+
+Call any [Bot API method](https://core.telegram.org/bots/api#available-methods)
+through `telegram.api` from a Convex action or webhook handler:
+
+```ts
+import { action } from "./_generated/server";
+import { v } from "convex/values";
+import { telegram } from "./telegram";
+
+export const sendMessage = action({
+  args: { chatId: v.union(v.string(), v.float64()), text: v.string() },
+  returns: v.null(),
+  handler: async (_ctx, args) => {
+    await telegram.api.sendMessage({ chat_id: args.chatId, text: args.text });
+    return null;
+  },
+});
+```
+
+## Receiving messages
+
+To receive [updates](https://core.telegram.org/bots/api#getting-updates) you
+register an HTTP route and point Telegram at it.
+
+### 1. (Recommended) configure a webhook secret
+
+Telegram can attach a secret token to every webhook request so you can verify it
+really came from Telegram. Set any random string and the component will both
+register it and verify it:
+
+```bash
+npx convex env set TELEGRAM_WEBHOOK_SECRET <random-string>
+```
+
+If `TELEGRAM_WEBHOOK_SECRET` is not set, the webhook is left open and requests
+are not verified — only do this for local testing. See `secret_token` in the
+[setWebhook docs](https://core.telegram.org/bots/api#setwebhook).
+
+### 2. Register the webhook route
 
 `convex/http.ts`:
 
@@ -70,9 +112,6 @@ import { telegram } from "./telegram";
 const http = httpRouter();
 
 telegram.registerRoutes(http, {
-  onUpdate: async (_ctx, update, bot) => {
-    console.log("Telegram update", bot.username, update.update_id);
-  },
   handlers: {
     message: async (_ctx, update, bot) => {
       await bot.api.sendMessage({
@@ -88,31 +127,29 @@ export default http;
 
 The route defaults to `/telegram/webhook`.
 
-### 5. Set up the Telegram webhook
+### 3. Point Telegram at your deployment
 
-Run this from a Convex action after deploying the HTTP route:
+After deploying the HTTP route, run `setupWebhook` once from an action. It calls
+Telegram [`setWebhook`](https://core.telegram.org/bots/api#setwebhook) and, if
+configured, registers your secret:
 
 ```ts
 import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { telegram } from "./telegram";
 
-export const setupTelegramWebhook = action({
+export const setupWebhook = action({
   args: {},
-  returns: v.object({
-    botUsername: v.string(),
-    webhookUrl: v.string(),
-  }),
-  handler: async (ctx) => {
-    return await telegram.setupWebhook(ctx, {
+  returns: v.object({ botUsername: v.string(), webhookUrl: v.string() }),
+  handler: async () => {
+    return await telegram.setupWebhook({
       allowedUpdates: ["message", "callback_query"],
-      dropPendingUpdates: true,
     });
   },
 });
 ```
 
-`setupWebhook` uses `CONVEX_SITE_URL` and registers:
+`setupWebhook` uses `CONVEX_SITE_URL` to build the webhook URL:
 
 ```text
 https://<deployment>.convex.site/telegram/webhook
@@ -121,71 +158,22 @@ https://<deployment>.convex.site/telegram/webhook
 Pass `url` to `setupWebhook` if your public webhook URL is not based on
 `CONVEX_SITE_URL`.
 
-## Direct Bot API Access
+### Handling updates
 
-Use `telegram.api` from actions or webhook handlers for any Telegram Bot API
-method:
+Handlers receive `(ctx, update, bot)`:
 
-```ts
-await telegram.api.sendMessage({
-  chat_id: 42,
-  text: "Hello from Convex",
-});
-
-await telegram.api.answerCallbackQuery({
-  callback_query_id: update.callback_query.id,
-});
-```
-
-The component intentionally does not wrap every Bot API method. `telegram.api`
-is the raw typed escape hatch for methods that do not need component state.
-
-## API Reference
-
-### `new Telegram(component, options)`
-
-Options:
-
-- `token?: string` overrides `TELEGRAM_BOT_TOKEN`.
-- `webhookPath?: string` defaults to `/telegram/webhook` and must start with
-  `/`.
-
-### Methods
-
-- `telegram.api` is a typed Telegram Bot API client.
-- `telegram.setupWebhook(ctx, options?)` verifies the bot with `getMe`, creates
-  a webhook secret, calls Telegram `setWebhook`, stores the secret, and returns
-  `{ botUsername, webhookUrl }`.
-- `telegram.deleteWebhook(ctx, options?)` calls Telegram `deleteWebhook` and
-  deletes the stored webhook secret.
-- `telegram.registerRoutes(http, config?)` mounts the webhook HTTP route.
-
-`setupWebhook` options:
-
-- `allowedUpdates?: TelegramUpdateEvent[]` defaults to `["message"]`.
-- `dropPendingUpdates?: boolean` defaults to `true`.
-- `url?: string` overrides the generated webhook URL and must start with
-  `https://`.
-
-`deleteWebhook` options:
-
-- `dropPendingUpdates?: boolean` defaults to `true`.
-
-### Webhook handlers
-
-Handlers receive `(ctx, update, bot)`.
-
-- `ctx` is the Convex HTTP action context.
-- `update` is the Telegram update. Specific handlers narrow the matching update
-  key.
-- `bot.username` is the normalized bot username, including the leading `@`.
-- `bot.api` is the same typed Telegram Bot API client as `telegram.api`.
+- `ctx` is the Convex HTTP action context (use `ctx.runQuery` /
+  `ctx.runMutation` to reach your app's functions).
+- `update` is the [Telegram update](https://core.telegram.org/bots/api#update).
+  Specific handlers narrow it to the matching key (e.g. `message` is non-null).
+- `bot.api` is the same typed Bot API client as `telegram.api`.
 
 ```ts
+import { internal } from "./_generated/api";
+
 telegram.registerRoutes(http, {
-  onUpdate: async (ctx, update, bot) => {
+  onUpdate: async (ctx, update) => {
     await ctx.runMutation(internal.telegram.logUpdate, {
-      botUsername: bot.username,
       updateId: update.update_id,
     });
   },
@@ -199,29 +187,34 @@ telegram.registerRoutes(http, {
 });
 ```
 
-`onUpdate` runs before specific handlers. If an update contains multiple
-Telegram update keys, every matching specific handler runs in object-key order.
+`onUpdate` runs for every update before the specific handlers. Each handler key
+matches a field on the Telegram update object.
 
-## Webhook Behavior
+## API Reference
 
-- Missing or invalid webhook secret returns `401`.
-- Malformed JSON returns `400`.
-- Handler failures are logged and return `500`, allowing Telegram to retry the
-  update.
-- Successful dispatch returns `200`.
+### `new Telegram(component, options?)`
 
-## Component Tables
+- `component` — the installed component, e.g. `components.telegram`.
+- `options.token?` — bot token. Defaults to `TELEGRAM_BOT_TOKEN`.
+- `options.webhookSecret?` — webhook secret. Defaults to
+  `TELEGRAM_WEBHOOK_SECRET`. When unset, webhook requests are not verified.
+- `options.webhookPath?` — route path. Defaults to `/telegram/webhook` and must
+  start with `/`.
 
-### `webhooks`
+### Methods
 
-- `botUsername: string` is the normalized bot username from Telegram `getMe`.
-- `webhookSecretToken: string` is the secret expected in
-  `X-Telegram-Bot-Api-Secret-Token`.
-
-Indexes:
-
-- `by_bot_username`
-- `by_webhook_secret_token`
+- `telegram.api` — typed [Bot API](https://core.telegram.org/bots/api) client.
+- `telegram.setupWebhook(options?)` — verifies the bot with `getMe`, calls
+  Telegram `setWebhook` (sending the secret when configured), and returns
+  `{ botUsername, webhookUrl }`.
+  - `allowedUpdates?: TelegramUpdateEvent[]` defaults to `["message"]`.
+  - `dropPendingUpdates?: boolean` defaults to `true`.
+  - `url?: string` overrides the generated URL and must start with `https://`.
+- `telegram.deleteWebhook(options?)` — calls Telegram `deleteWebhook`.
+  - `dropPendingUpdates?: boolean` defaults to `true`.
+- `telegram.registerRoutes(http, config?)` — mounts the webhook HTTP route.
+  - `config.onUpdate?` runs for every update.
+  - `config.handlers?` maps an update key to a typed handler.
 
 ## Example
 
@@ -232,7 +225,8 @@ deployment.
 
 ## Testing
 
-Use the package test helper to register the component in `convex-test`:
+Use the package test helper to register the component in
+[`convex-test`](https://docs.convex.dev/testing/convex-test):
 
 ```ts
 import telegram from "convex-telegram/test";
@@ -265,7 +259,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
 
 ```text
 src/
-  component/   # component schema, functions, config, generated types
+  component/   # component config, schema, generated types
   client/      # app-side Telegram client and public types
 example/       # runnable example app (Convex backend)
 dist/          # built output published to npm

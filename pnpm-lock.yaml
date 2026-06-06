@@ -28,7 +28,7 @@ importers:
         specifier: 3.0.0
         version: 3.0.0
       convex:
-        specifier: ^1.36.1
+        specifier: ^1.40.0
         version: 1.40.0
       convex-test:
         specifier: ^0.0.50

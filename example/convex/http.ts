@@ -4,7 +4,6 @@ import { telegram } from "./telegram.js";
 
 const http = httpRouter();
 
-// Verifies the secret token, then dispatches updates to the handlers below.
 // Webhook URL: https://<your-deployment>.convex.site/telegram/webhook
 telegram.registerRoutes(http, {
   handlers: {
@@ -25,8 +24,8 @@ telegram.registerRoutes(http, {
       }
     },
   },
-  onUpdate: async (_ctx, update, bot) => {
-    console.log(`${bot.username} received update ${update.update_id}`);
+  onUpdate: async (_ctx, update) => {
+    console.log(`Received Telegram update ${update.update_id}`);
   },
 });
 

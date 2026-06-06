@@ -1,6 +1,6 @@
 {
   "name": "convex-telegram",
-  "description": "A Telegram bot component for Convex: register webhooks, verify requests, and dispatch typed Telegram updates.",
+  "description": "A Telegram bot component for Convex: send messages via the typed Bot API and receive updates through a verified webhook.",
   "repository": "github:Re11oy/convex-telegram",
   "homepage": "https://github.com/Re11oy/convex-telegram#readme",
   "bugs": {
@@ -78,7 +78,7 @@
     "@eslint/js": "9.39.2",
     "@types/node": "^24.12.2",
     "chokidar-cli": "3.0.0",
-    "convex": "^1.36.1",
+    "convex": "^1.40.0",
     "convex-test": "^0.0.50",
     "eslint": "9.39.2",
     "globals": "17.6.0",

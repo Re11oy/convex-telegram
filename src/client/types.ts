@@ -5,8 +5,6 @@ import type {
   HttpRouter,
 } from "convex/server";
 
-export type ActionCtx = Pick<GenericActionCtx<GenericDataModel>, "runMutation">;
-
 export type TelegramUpdateEvent = Exclude<keyof TelegramUpdate, "update_id">;
 
 export type TelegramUpdateForEvent<
@@ -15,10 +13,7 @@ export type TelegramUpdateForEvent<
   ? TelegramUpdate & { [K in T]-?: NonNullable<TelegramUpdate[K]> }
   : never;
 
-export type TelegramBotUsername = string & { __isBotUsername: true };
-
 export type TelegramBot = {
-  username: TelegramBotUsername;
   api: APIMethods;
 };
 

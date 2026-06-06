@@ -22,28 +22,4 @@ import type { FunctionReference } from "convex/server";
  * ```
  */
 export type ComponentApi<Name extends string | undefined = string | undefined> =
-  {
-    lib: {
-      deleteWebhookSecret: FunctionReference<
-        "mutation",
-        "internal",
-        { botUsername: string },
-        boolean,
-        Name
-      >;
-      findWebhookSecret: FunctionReference<
-        "query",
-        "internal",
-        { webhookSecretToken: string },
-        { isValid: false } | { botUsername: string; isValid: true },
-        Name
-      >;
-      saveWebhookSecret: FunctionReference<
-        "mutation",
-        "internal",
-        { botUsername: string; webhookSecretToken: string },
-        null,
-        Name
-      >;
-    };
-  };
+  {};
