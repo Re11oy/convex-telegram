@@ -1,8 +1,8 @@
 # convex-telegram
 
 A [Convex](https://convex.dev) component for
-[Telegram bots](https://core.telegram.org/bots). Send messages through the typed
-[Generated Telegram Bot API client](https://github.com/gramiojs/types) and, when
+[Telegram bots](https://core.telegram.org/bots). Send messages through the typed API client based on
+[@gramio/types](https://www.npmjs.com/package/@gramio/types) and, when
 you need to react to users, receive updates through a verified webhook.
 
 ## What you can do
@@ -252,16 +252,6 @@ pnpm lint
 ```
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
-
-## Project Layout
-
-```text
-src/
-  component/   # component config, schema, generated types
-  client/      # app-side Telegram client and public types
-example/       # runnable example app (Convex backend)
-dist/          # built output published to npm
-```
 
 ## License
 

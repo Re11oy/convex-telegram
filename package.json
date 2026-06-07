@@ -69,13 +69,11 @@
   "peerDependencies": {
     "convex": ">=1.29.3"
   },
-  "dependencies": {
-    "@gramio/types": "9.6.1"
-  },
   "devDependencies": {
     "@convex-dev/eslint-plugin": "2.0.0",
     "@edge-runtime/vm": "^5.0.0",
     "@eslint/js": "9.39.2",
+    "@gramio/types": "10.0.0",
     "@types/node": "^24.12.2",
     "chokidar-cli": "3.0.0",
     "convex": "^1.40.0",
