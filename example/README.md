@@ -1,57 +1,37 @@
-# Telegram component example
+# Telegram support inbox example
 
-A minimal Convex backend that installs `convex-telegram`, registers the webhook
-route, and echoes incoming messages back to the sender. There is no frontend —
-you drive it from Telegram and the Convex dashboard.
+A full-stack demo for the [`convex-telegram`](../README.md) component: a
+Telegram-style support inbox backed by Convex.
 
-## Setup
+## Run it
 
-1. From the repository root, start the dev deployment (this also builds the
-   component on every change):
+```sh
+# from the repository root
+pnpm install
+pnpm dev            # Convex backend + component rebuild
+pnpm dev:frontend   # Vite dev server (in a second terminal)
+```
 
-   ```sh
-   pnpm install
-   pnpm dev
-   ```
+Then create a bot with [@BotFather](https://t.me/BotFather) and configure it
+(from the repository root):
 
-2. Create a bot with [@BotFather](https://t.me/BotFather) and set its token on
-   the deployment:
-
-   ```sh
-   npx convex env set TELEGRAM_BOT_TOKEN <your-token>
-   ```
-
-3. (Recommended) set a webhook secret so only Telegram can call your endpoint:
-
-   ```sh
-   npx convex env set TELEGRAM_WEBHOOK_SECRET <random-string>
-   ```
-
-4. Point Telegram at this deployment's webhook:
-
-   ```sh
-   npx convex run telegram:setupWebhook
-   ```
+```sh
+npx convex env set TELEGRAM_BOT_TOKEN <your-token>
+npx convex env set TELEGRAM_WEBHOOK_SECRET <random-string>   # recommended
+npx convex run telegram:setupWebhook
+```
 
 ## Try it
 
-- Message your bot on Telegram. It replies `You said: ...` and stores the
-  message in the `messages` table (visible in the dashboard).
-- Send a message yourself:
-
-  ```sh
-  npx convex run telegram:sendMessage '{ "chatId": <your-chat-id>, "text": "Hi" }'
-  ```
-
-- Stop receiving updates:
-
-  ```sh
-  npx convex run telegram:deleteWebhook
-  ```
+- Message your bot on Telegram — the conversation shows up in the inbox.
+- Reply from the composer — the message is stored and delivered on Telegram.
+- Stop receiving updates with `npx convex run telegram:deleteWebhook`.
 
 ## What's where
 
 - `convex/convex.config.ts` — installs the Telegram component.
-- `convex/telegram.ts` — constructs the client and exposes setup / send actions.
-- `convex/http.ts` — registers the webhook route and handles updates.
-- `convex/schema.ts` — the `messages` table used by the handler.
+- `convex/schema.ts` — the `messages` table (`chatId`, `username?`, `text`, `direction`).
+- `convex/http.ts` — the webhook route; records inbound messages.
+- `convex/messages.ts` — `listTopics` (UI feed), `recordInbound`, and `send`.
+- `convex/telegram.ts` — the client, `setupWebhook` / `deleteWebhook`, and `deliverToTelegram`.
+- `src/App.tsx` — the inbox UI (chat list, conversation, composer).

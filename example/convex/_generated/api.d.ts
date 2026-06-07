@@ -9,6 +9,7 @@
  */
 
 import type * as http from "../http.js";
+import type * as messages from "../messages.js";
 import type * as telegram from "../telegram.js";
 
 import type {
@@ -19,6 +20,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   http: typeof http;
+  messages: typeof messages;
   telegram: typeof telegram;
 }>;
 

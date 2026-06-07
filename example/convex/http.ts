@@ -7,25 +7,16 @@ const http = httpRouter();
 // Webhook URL: https://<your-deployment>.convex.site/telegram/webhook
 telegram.registerRoutes(http, {
   handlers: {
-    message: async (ctx, update, bot) => {
+    message: async (ctx, update) => {
       const { chat, from, text } = update.message;
+      if (!text) return;
 
-      await ctx.runMutation(internal.telegram.recordMessage, {
+      await ctx.runMutation(internal.messages.recordInbound, {
         chatId: chat.id,
-        text,
         username: from?.username,
+        text,
       });
-
-      if (text) {
-        await bot.api.sendMessage({
-          chat_id: chat.id,
-          text: `You said: ${text}`,
-        });
-      }
     },
-  },
-  onUpdate: async (_ctx, update) => {
-    console.log(`Received Telegram update ${update.update_id}`);
   },
 });
 
