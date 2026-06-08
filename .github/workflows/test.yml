@@ -37,6 +37,9 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm build
 
+      - name: Publish preview package
+        run: pnpm exec pkg-pr-new publish || echo "pkg-pr-new failed"
+
       - name: Test
         run: |
           pnpm test

@@ -62,6 +62,27 @@ it is not obvious. Mark breaking changes with a `!` after the type
 
 ## Releasing
 
-Releases are cut by the maintainers with `pnpm release` (patch) or `pnpm alpha`
-(prerelease). Both run the full `preversion` gate, publish to npm, and push the
-tag.
+Releases are cut by the maintainers from a clean `main`. Versioning, the
+changelog, and publishing are wired through npm lifecycle scripts, so the usual
+flow is a single command.
+
+### Cut a release
+
+```sh
+pnpm release   # patch bump, published under the `latest` tag
+pnpm alpha     # prerelease bump, published under the `alpha` tag
+```
+
+Each command runs, in order:
+
+1. **`preversion`** — the full gate: clean install (`--frozen-lockfile`), clean
+   rebuild, test, typecheck, and lint. The release aborts if any check fails.
+2. **`pnpm version`** bumps the version in `package.json`.
+3. **`version`** — ensures you are logged in to npm
+   (`pnpm whoami`/`pnpm login`), then opens [CHANGELOG.md](./CHANGELOG.md) in
+   your editor with a new `## <version>` heading already inserted at the top.
+   Write the notes for the release and save; the file is formatted with Prettier
+   and staged so it lands in the version commit.
+4. The version commit and git tag are created, the package is published to npm,
+   and both are pushed with `git push --follow-tags`.
+
