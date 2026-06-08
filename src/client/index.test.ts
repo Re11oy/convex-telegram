@@ -37,6 +37,7 @@ describe("Telegram client", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   test("creates a client with a component reference", () => {
@@ -105,7 +106,7 @@ describe("Telegram client", () => {
 
   test("setupWebhook omits the secret when none is configured", async () => {
     vi.stubEnv("CONVEX_SITE_URL", "https://demo.convex.site");
-    vi.stubEnv("TELEGRAM_WEBHOOK_SECRET", "");
+    vi.stubEnv("TELEGRAM_WEBHOOK_SECRET", undefined);
     const client = new Telegram(components.telegram, {
       token: "telegram-token",
     });
@@ -186,7 +187,7 @@ describe("Telegram client", () => {
   });
 
   test("registerRoutes accepts requests when no secret is configured", async () => {
-    vi.stubEnv("TELEGRAM_WEBHOOK_SECRET", "");
+    vi.stubEnv("TELEGRAM_WEBHOOK_SECRET", undefined);
     const client = new Telegram(components.telegram, {
       token: "telegram-token",
     });
