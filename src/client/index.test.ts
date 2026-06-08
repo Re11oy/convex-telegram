@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { httpRouter } from "convex/server";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { Telegram } from "./index.js";
+import { registerRoutes, TelegramBot } from "./index.js";
 import { components } from "./setup.test.js";
 
 function jsonResponse(body: unknown) {
@@ -41,21 +41,21 @@ describe("Telegram client", () => {
   });
 
   test("creates a client with a component reference", () => {
-    const client = new Telegram(components.telegram, { token: "t" });
+    const client = new TelegramBot(components.telegram, { token: "t" });
     expect(client.component).toBeDefined();
     expect(client.api).toBeDefined();
   });
 
   test("requires a bot token when calling the Telegram API", async () => {
     vi.stubEnv("TELEGRAM_BOT_TOKEN", "");
-    const client = new Telegram(components.telegram);
+    const client = new TelegramBot(components.telegram);
     await expect(client.api.getMe()).rejects.toThrow(
       "Telegram bot token is required",
     );
   });
 
   test("api proxy can be awaited without calling a then method", async () => {
-    const client = new Telegram(components.telegram, {
+    const client = new TelegramBot(components.telegram, {
       token: "telegram-token",
     });
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(getMeResponse());
@@ -72,7 +72,7 @@ describe("Telegram client", () => {
 
   test("setupWebhook registers the webhook with the configured secret", async () => {
     vi.stubEnv("CONVEX_SITE_URL", "https://demo.convex.site");
-    const client = new Telegram(components.telegram, {
+    const client = new TelegramBot(components.telegram, {
       token: "telegram-token",
       webhookSecret: "s3cret",
     });
@@ -107,7 +107,7 @@ describe("Telegram client", () => {
   test("setupWebhook omits the secret when none is configured", async () => {
     vi.stubEnv("CONVEX_SITE_URL", "https://demo.convex.site");
     vi.stubEnv("TELEGRAM_WEBHOOK_SECRET", undefined);
-    const client = new Telegram(components.telegram, {
+    const client = new TelegramBot(components.telegram, {
       token: "telegram-token",
     });
     const fetchMock = vi
@@ -125,7 +125,7 @@ describe("Telegram client", () => {
   });
 
   test("deleteWebhook removes the Telegram webhook", async () => {
-    const client = new Telegram(components.telegram, {
+    const client = new TelegramBot(components.telegram, {
       token: "telegram-token",
     });
     const fetchMock = vi
@@ -144,14 +144,14 @@ describe("Telegram client", () => {
   });
 
   test("registerRoutes verifies the secret and dispatches updates", async () => {
-    const client = new Telegram(components.telegram, {
-      token: "telegram-token",
-      webhookSecret: "right-secret",
-    });
     const http = httpRouter();
     const onUpdate = vi.fn().mockResolvedValue(undefined);
     const onMessage = vi.fn().mockResolvedValue(undefined);
-    client.registerRoutes(http, { handlers: { message: onMessage }, onUpdate });
+    registerRoutes(http, components.telegram, {
+      webhookSecret: "right-secret",
+      handlers: { message: onMessage },
+      onUpdate,
+    });
     const [[path, method, handler]] = http.getRoutes();
 
     expect(path).toBe("/telegram/webhook");
@@ -181,19 +181,16 @@ describe("Telegram client", () => {
 
     expect(response.status).toBe(200);
     expect(onUpdate.mock.calls[0]?.[1]).toEqual(update);
-    expect(onUpdate.mock.calls[0]?.[2].api).toBe(client.api);
     expect(onMessage.mock.calls[0]?.[1]).toEqual(update);
-    expect(onMessage.mock.calls[0]?.[2].api).toBe(client.api);
   });
 
   test("registerRoutes accepts requests when no secret is configured", async () => {
     vi.stubEnv("TELEGRAM_WEBHOOK_SECRET", undefined);
-    const client = new Telegram(components.telegram, {
-      token: "telegram-token",
-    });
     const http = httpRouter();
     const onMessage = vi.fn().mockResolvedValue(undefined);
-    client.registerRoutes(http, { handlers: { message: onMessage } });
+    registerRoutes(http, components.telegram, {
+      handlers: { message: onMessage },
+    });
     const [[, , handler]] = http.getRoutes();
 
     const update = {
@@ -215,12 +212,10 @@ describe("Telegram client", () => {
   });
 
   test("registerRoutes returns 400 on malformed JSON", async () => {
-    const client = new Telegram(components.telegram, {
-      token: "telegram-token",
+    const http = httpRouter();
+    registerRoutes(http, components.telegram, {
       webhookSecret: "right-secret",
     });
-    const http = httpRouter();
-    client.registerRoutes(http);
     const [[, , handler]] = http.getRoutes();
 
     const response = await (handler as unknown as RouteHandler)._handler(

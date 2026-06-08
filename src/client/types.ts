@@ -1,4 +1,4 @@
-import type { APIMethods, TelegramUpdate } from "@gramio/types";
+import type { TelegramUpdate } from "@gramio/types";
 import type {
   GenericActionCtx,
   GenericDataModel,
@@ -13,16 +13,11 @@ export type TelegramUpdateForEvent<
   ? TelegramUpdate & { [K in T]-?: NonNullable<TelegramUpdate[K]> }
   : never;
 
-export type TelegramBot = {
-  api: APIMethods;
-};
-
 export type TelegramUpdateHandler<
   T extends TelegramUpdateEvent = TelegramUpdateEvent,
 > = (
   ctx: GenericActionCtx<GenericDataModel>,
   update: TelegramUpdateForEvent<T>,
-  bot: TelegramBot,
 ) => Promise<void>;
 
 export type TelegramUpdateHandlers = {
@@ -32,12 +27,12 @@ export type TelegramUpdateHandlers = {
 export type RunnableTelegramUpdateHandler = (
   ctx: GenericActionCtx<GenericDataModel>,
   update: TelegramUpdate,
-  bot: TelegramBot,
 ) => Promise<void>;
 
 export type RegisterRoutesConfig = {
+  webhookPath?: string;
+  webhookSecret?: string;
   handlers?: TelegramUpdateHandlers;
-
   onUpdate?: TelegramUpdateHandler;
 };
 

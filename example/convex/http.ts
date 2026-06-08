@@ -1,11 +1,11 @@
 import { httpRouter } from "convex/server";
-import { internal } from "./_generated/api.js";
-import { telegram } from "./telegram.js";
+import { registerRoutes } from "convex-telegram";
+import { components, internal } from "./_generated/api.js";
 
 const http = httpRouter();
 
 // Webhook URL: https://<your-deployment>.convex.site/telegram/webhook
-telegram.registerRoutes(http, {
+registerRoutes(http, components.telegram, {
   handlers: {
     message: async (ctx, update) => {
       const { chat, from, text } = update.message;

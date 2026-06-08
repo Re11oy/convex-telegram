@@ -4,17 +4,12 @@ import type {
   TelegramAPIResponse,
   TelegramUpdate,
 } from "@gramio/types";
-import {
-  type GenericActionCtx,
-  type GenericDataModel,
-  httpActionGeneric,
-} from "convex/server";
+import { httpActionGeneric } from "convex/server";
 import type { ComponentApi } from "../component/_generated/component.js";
 import type {
   HttpRouter,
   RegisterRoutesConfig,
   RunnableTelegramUpdateHandler,
-  TelegramBot,
   TelegramUpdateEvent,
 } from "./types.js";
 import { env } from "../component/_generated/server.js";
@@ -22,14 +17,12 @@ import { env } from "../component/_generated/server.js";
 export type {
   HttpRouter,
   RegisterRoutesConfig,
-  TelegramBot,
   TelegramUpdateEvent,
   TelegramUpdateForEvent,
   TelegramUpdateHandler,
   TelegramUpdateHandlers,
 } from "./types.js";
 
-// https://core.telegram.org/bots/api
 const TBA_BASE_URL = "https://api.telegram.org/bot";
 const DEFAULT_WEBHOOK_PATH = "/telegram/webhook";
 
@@ -64,7 +57,7 @@ export type DeleteWebhookOptions = {
   dropPendingUpdates?: boolean;
 };
 
-export class Telegram {
+export class TelegramBot {
   /**
    * Typed Telegram Bot API client. Use it to send messages or call any method.
    *
@@ -120,26 +113,15 @@ export class Telegram {
     const { dropPendingUpdates = true } = options ?? {};
     await this.api.deleteWebhook({ drop_pending_updates: dropPendingUpdates });
   }
-
-  /** Mount the HTTP route that receives and dispatches Telegram updates. */
-  registerRoutes(http: HttpRouter, config?: RegisterRoutesConfig) {
-    registerRoutes(
-      http,
-      this.api,
-      this.webhookPath,
-      this.webhookSecret,
-      config,
-    );
-  }
 }
 
-function registerRoutes(
+export function registerRoutes(
   http: HttpRouter,
-  api: APIMethods,
-  webhookPath: string,
-  webhookSecret: string | undefined,
+  _component: TelegramComponent,
   config?: RegisterRoutesConfig,
 ) {
+  const webhookSecret = getWebhookSecret(config?.webhookSecret);
+  const webhookPath = getWebhookPath(config?.webhookPath);
   const { handlers = {}, onUpdate } = config ?? {};
 
   http.route({
@@ -162,22 +144,16 @@ function registerRoutes(
         return new Response("Bad Request", { status: 400 });
       }
 
-      const bot: TelegramBot = { api };
       try {
-        await callHandler(
-          onUpdate as RunnableTelegramUpdateHandler | undefined,
+        await (onUpdate as RunnableTelegramUpdateHandler | undefined)?.(
           ctx,
           update,
-          bot,
         );
 
         for (const eventType of getUpdateEventTypes(update)) {
-          await callHandler(
-            handlers[eventType] as RunnableTelegramUpdateHandler | undefined,
-            ctx,
-            update,
-            bot,
-          );
+          await (
+            handlers[eventType] as RunnableTelegramUpdateHandler | undefined
+          )?.(ctx, update);
         }
       } catch (error) {
         console.error("Error processing Telegram webhook:", error);
@@ -200,15 +176,6 @@ function getUpdateEventTypes(update: TelegramUpdate) {
   }
 
   return eventTypes;
-}
-
-async function callHandler(
-  handler: RunnableTelegramUpdateHandler | undefined,
-  ctx: GenericActionCtx<GenericDataModel>,
-  update: TelegramUpdate,
-  bot: TelegramBot,
-) {
-  await handler?.(ctx, update, bot);
 }
 
 function botApiProxy(getToken: () => string) {
@@ -281,4 +248,4 @@ function getWebhookUrl(url: string | undefined, webhookPath: string) {
   return `${siteUrl}${webhookPath}`;
 }
 
-export default Telegram;
+export default TelegramBot;
