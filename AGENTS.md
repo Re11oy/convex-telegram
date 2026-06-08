@@ -36,4 +36,8 @@ pnpm format       # prettier --write
 - Relative imports use explicit `.js` extensions (NodeNext module resolution).
 - Run `pnpm build && pnpm test && pnpm typecheck && pnpm lint` before
   committing.
-- Use Conventional Commits — see [CONTRIBUTING.md](./CONTRIBUTING.md#commits).
+- When guides links to another doc for details, open and read that doc before acting.
+- Use Conventional Commits — read
+  [CONTRIBUTING.md#commits](./CONTRIBUTING.md#commits) first. Summary is an
+  imperative `type(scope): …` line; the body explains the "why" (the diff
+  already shows the "what"), and only when it isn't obvious.
