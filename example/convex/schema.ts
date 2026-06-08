@@ -7,5 +7,5 @@ export default defineSchema({
     username: v.optional(v.string()),
     text: v.string(),
     direction: v.union(v.literal("inbound"), v.literal("outbound")),
-  }).index("by_chat", ["chatId"]),
+  }).index("by_chat", ["chatId", "direction"]),
 });

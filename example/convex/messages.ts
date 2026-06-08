@@ -2,6 +2,18 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api.js";
 import { internalMutation, mutation, query } from "./_generated/server.js";
 
+const WELCOME_MESSAGE = [
+  "This is a Convex component example.",
+  "",
+  "Drop a message here and watch it appear in the live inbox:",
+  "https://convex-telegram.vercel.app/",
+  "",
+  "Read more about the component:",
+  "https://www.convex.dev/components/convex-telegram",
+].join("\n");
+
+const THREAD_TTL_MS = 60 * 60 * 1000;
+
 // The last 50 messages, grouped by chat into conversation topics. Topics are
 // ordered by most-recent activity; messages within a topic are chronological.
 // `mine` is true for our own (outbound) replies.
@@ -27,7 +39,10 @@ export const listTopics = query({
       // `recent` is newest-first, so the first username we see is the latest.
       topic.name ??= m.username;
       // Prepend to keep each topic chronological.
-      topic.messages.unshift({ mine: m.direction === "outbound", text: m.text });
+      topic.messages.unshift({
+        mine: m.direction === "outbound",
+        text: m.text,
+      });
     }
 
     return [...topics.values()].map((t) => ({
@@ -47,12 +62,35 @@ export const recordInbound = internalMutation({
     text: v.string(),
   },
   handler: async (ctx, { chatId, username, text }) => {
+    const existing = await ctx.db
+      .query("messages")
+      .withIndex("by_chat", (q) => q.eq("chatId", chatId))
+      .first();
+    const isFirstMessage = existing === null;
+
     await ctx.db.insert("messages", {
       chatId,
       username,
       text,
       direction: "inbound",
     });
+
+    if (isFirstMessage) {
+      await ctx.db.insert("messages", {
+        chatId,
+        text: WELCOME_MESSAGE,
+        direction: "outbound",
+      });
+      await ctx.scheduler.runAfter(0, internal.telegram.deliverToTelegram, {
+        chatId,
+        text: WELCOME_MESSAGE,
+      });
+      await ctx.scheduler.runAfter(
+        THREAD_TTL_MS,
+        internal.messages.deleteThread,
+        { chatId },
+      );
+    }
   },
 });
 
@@ -66,5 +104,23 @@ export const send = mutation({
       chatId,
       text,
     });
+  },
+});
+
+export const deleteThread = internalMutation({
+  args: { chatId: v.float64() },
+  returns: v.number(),
+  handler: async (ctx, { chatId }) => {
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_chat", (q) => q.eq("chatId", chatId))
+      .collect();
+
+    for (const message of messages) {
+      await ctx.db.delete("messages", message._id);
+    }
+
+    console.log(`Removed ${messages.length} message(s) for chat ${chatId}.`);
+    return messages.length;
   },
 });
