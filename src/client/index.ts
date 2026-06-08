@@ -17,6 +17,7 @@ import type {
   TelegramBot,
   TelegramUpdateEvent,
 } from "./types.js";
+import { env } from "../component/_generated/server.js";
 
 export type {
   HttpRouter,
@@ -244,18 +245,15 @@ function botApiProxy(getToken: () => string) {
 }
 
 function getRequiredToken(token: string | undefined) {
-  const value = (token ?? process.env.TELEGRAM_BOT_TOKEN ?? "").trim();
+  const value = (token ?? env.TELEGRAM_BOT_TOKEN ?? "").trim();
   if (value === "") {
-    throw new Error(
-      "Telegram bot token is required. Pass `token` or set TELEGRAM_BOT_TOKEN.",
-    );
+    throw new Error("Telegram bot token is required.");
   }
   return value;
 }
 
 function getWebhookSecret(secret: string | undefined) {
-  const value = (secret ?? process.env.TELEGRAM_WEBHOOK_SECRET ?? "").trim();
-  return value === "" ? undefined : value;
+  return secret ?? env.TELEGRAM_WEBHOOK_SECRET;
 }
 
 function getWebhookPath(webhookPath: string | undefined) {
