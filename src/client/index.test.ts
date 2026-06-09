@@ -33,6 +33,14 @@ function webhookRequest(secret: string | undefined, body: unknown) {
   });
 }
 
+function mockActionCtx() {
+  return {
+    runQuery: vi.fn(),
+    runMutation: vi.fn().mockResolvedValue(null),
+    runAction: vi.fn(),
+  };
+}
+
 describe("Telegram client", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -70,7 +78,7 @@ describe("Telegram client", () => {
     );
   });
 
-  test("setupWebhook registers the webhook with the configured secret", async () => {
+  test("setupWebhook registers the webhook and records it", async () => {
     vi.stubEnv("CONVEX_SITE_URL", "https://demo.convex.site");
     const client = new TelegramBot(components.telegram, {
       token: "telegram-token",
@@ -81,8 +89,9 @@ describe("Telegram client", () => {
       .mockResolvedValueOnce(getMeResponse())
       .mockResolvedValueOnce(jsonResponse({ ok: true, result: true }));
     vi.stubGlobal("fetch", fetchMock);
+    const ctx = mockActionCtx();
 
-    const result = await client.setupWebhook({
+    const result = await client.setupWebhook(ctx, {
       allowedUpdates: ["message", "callback_query"],
       dropPendingUpdates: false,
     });
@@ -102,6 +111,19 @@ describe("Telegram client", () => {
       allowed_updates: ["message", "callback_query"],
       drop_pending_updates: false,
     });
+    expect(ctx.runMutation).toHaveBeenCalledWith(
+      components.telegram.webhooks.create,
+      {
+        botUsername: "@demo_bot",
+        botId: 123,
+        secretHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+        settings: {
+          webhookUrl: "https://demo.convex.site/telegram/webhook",
+          allowedUpdates: ["message", "callback_query"],
+          dropPendingUpdates: false,
+        },
+      },
+    );
   });
 
   test("setupWebhook omits the secret when none is configured", async () => {
@@ -115,31 +137,43 @@ describe("Telegram client", () => {
       .mockResolvedValueOnce(getMeResponse())
       .mockResolvedValueOnce(jsonResponse({ ok: true, result: true }));
     vi.stubGlobal("fetch", fetchMock);
+    const ctx = mockActionCtx();
 
-    await client.setupWebhook();
+    await client.setupWebhook(ctx);
 
     const body = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string) as {
       secret_token?: string;
     };
     expect(body.secret_token).toBeUndefined();
+    expect(ctx.runMutation).toHaveBeenCalledWith(
+      components.telegram.webhooks.create,
+      expect.objectContaining({ secretHash: undefined }),
+    );
   });
 
-  test("deleteWebhook removes the Telegram webhook", async () => {
+  test("deleteWebhook removes the Telegram webhook and its record", async () => {
     const client = new TelegramBot(components.telegram, {
       token: "telegram-token",
     });
     const fetchMock = vi
       .fn<typeof fetch>()
-      .mockResolvedValue(jsonResponse({ ok: true, result: true }));
+      .mockResolvedValueOnce(getMeResponse())
+      .mockResolvedValueOnce(jsonResponse({ ok: true, result: true }));
     vi.stubGlobal("fetch", fetchMock);
+    const ctx = mockActionCtx();
 
-    await client.deleteWebhook({ dropPendingUpdates: false });
+    await client.deleteWebhook(ctx, { dropPendingUpdates: false });
 
-    expect(fetchMock).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
       "https://api.telegram.org/bottelegram-token/deleteWebhook",
       expect.objectContaining({
         body: JSON.stringify({ drop_pending_updates: false }),
       }),
+    );
+    expect(ctx.runMutation).toHaveBeenCalledWith(
+      components.telegram.webhooks.remove,
+      { botUsername: "@demo_bot" },
     );
   });
 

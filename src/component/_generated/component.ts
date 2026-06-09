@@ -22,4 +22,30 @@ import type { FunctionReference } from "convex/server";
  * ```
  */
 export type ComponentApi<Name extends string | undefined = string | undefined> =
-  {};
+  {
+    webhooks: {
+      create: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          botId: number;
+          botUsername: string;
+          secretHash?: string;
+          settings: {
+            allowedUpdates: Array<string>;
+            dropPendingUpdates: boolean;
+            webhookUrl: string;
+          };
+        },
+        null,
+        Name
+      >;
+      remove: FunctionReference<
+        "mutation",
+        "internal",
+        { botUsername: string },
+        null,
+        Name
+      >;
+    };
+  };

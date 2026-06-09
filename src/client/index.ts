@@ -9,6 +9,7 @@ import type { ComponentApi } from "../component/_generated/component.js";
 import type {
   HttpRouter,
   RegisterRoutesConfig,
+  ActionCtx,
   RunnableTelegramUpdateHandler,
   TelegramUpdateEvent,
 } from "./types.js";
@@ -78,12 +79,12 @@ export class TelegramBot {
 
   /**
    * Point Telegram at this deployment's webhook endpoint. Run once after
-   * deploying the route registered with {@link registerRoutes}. When a webhook
-   * secret is configured it is sent as `secret_token`.
+   * deploying the route registered with {@link registerRoutes}.
    *
    * @see https://core.telegram.org/bots/api#setwebhook
    */
   async setupWebhook(
+    ctx: ActionCtx,
     options?: SetupWebhookOptions,
   ): Promise<SetupWebhookResult> {
     const { dropPendingUpdates = true, allowedUpdates = ["message"] } =
@@ -101,7 +102,17 @@ export class TelegramBot {
       drop_pending_updates: dropPendingUpdates,
     });
 
-    return { botUsername: `@${me.username}`, webhookUrl };
+    const botUsername = `@${me.username}`;
+    await ctx.runMutation(this.component.webhooks.create, {
+      botUsername,
+      botId: me.id,
+      secretHash: this.webhookSecret
+        ? await sha256Hex(this.webhookSecret)
+        : undefined,
+      settings: { webhookUrl, allowedUpdates, dropPendingUpdates },
+    });
+
+    return { botUsername, webhookUrl };
   }
 
   /**
@@ -109,9 +120,18 @@ export class TelegramBot {
    *
    * @see https://core.telegram.org/bots/api#deletewebhook
    */
-  async deleteWebhook(options?: DeleteWebhookOptions): Promise<void> {
+  async deleteWebhook(
+    ctx: ActionCtx,
+    options?: DeleteWebhookOptions,
+  ): Promise<void> {
     const { dropPendingUpdates = true } = options ?? {};
+    const me = await this.api.getMe();
     await this.api.deleteWebhook({ drop_pending_updates: dropPendingUpdates });
+    if (me.is_bot && me.username) {
+      await ctx.runMutation(this.component.webhooks.remove, {
+        botUsername: `@${me.username}`,
+      });
+    }
   }
 }
 
@@ -246,6 +266,16 @@ function getWebhookUrl(url: string | undefined, webhookPath: string) {
     );
   }
   return `${siteUrl}${webhookPath}`;
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(value),
+  );
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 export default TelegramBot;

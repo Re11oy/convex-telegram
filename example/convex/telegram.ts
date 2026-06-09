@@ -14,16 +14,16 @@ export const setupWebhook = internalAction({
     botUsername: v.string(),
     webhookUrl: v.string(),
   }),
-  handler: async () => {
-    return await bot.setupWebhook();
+  handler: async (ctx) => {
+    return await bot.setupWebhook(ctx);
   },
 });
 
 export const deleteWebhook = internalAction({
   args: {},
   returns: v.null(),
-  handler: async () => {
-    await bot.deleteWebhook();
+  handler: async (ctx) => {
+    await bot.deleteWebhook(ctx);
     return null;
   },
 });
