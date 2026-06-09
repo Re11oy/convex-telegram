@@ -7,8 +7,6 @@ import type {
   HttpRouter,
 } from "convex/server";
 
-// Type utils follow
-
 export type QueryCtx = Pick<GenericQueryCtx<GenericDataModel>, "runQuery">;
 export type MutationCtx = Pick<
   GenericMutationCtx<GenericDataModel>,
@@ -59,7 +57,8 @@ export type RegisterRoutesConfig = {
   webhookPath?: string;
   /**
    * Optional webhook secret. When set, the component verifies the
-   * `X-Telegram-Bot-Api-Secret-Token` header.
+   * `X-Telegram-Bot-Api-Secret-Token` header against it directly; otherwise it
+   * verifies the header against the hash stored by `setupWebhook`.
    */
   webhookSecret?: string;
   /**
@@ -73,7 +72,4 @@ export type RegisterRoutesConfig = {
   onUpdate?: TelegramUpdateHandler;
 };
 
-/**
- * Type for the HttpRouter to be used in registerRoutes
- */
 export type { HttpRouter };

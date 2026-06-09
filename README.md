@@ -85,14 +85,15 @@ export const sendMessage = action({
 To receive [updates](https://core.telegram.org/bots/api#getting-updates) you
 register an HTTP route and point Telegram at it.
 
-### 1. Configure a webhook secret (recommended)
+### 1. Configure a webhook secret (optional)
 
 ```bash
 npx convex env set TELEGRAM_WEBHOOK_SECRET <random-string>
 ```
 
-When set, the component verifies the `X-Telegram-Bot-Api-Secret-Token` header.
-Without it, the webhook is open — only for local testing.
+The component always verifies the `X-Telegram-Bot-Api-Secret-Token` header. Set
+this to control the secret yourself; when unset, `setupWebhook` generates one and
+incoming requests are verified against its stored hash.
 
 ### 2. Register the webhook route
 

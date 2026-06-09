@@ -3,6 +3,7 @@ import { httpRouter } from "convex/server";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { registerRoutes, TelegramBot } from "./index.js";
 import { components } from "./setup.test.js";
+import { sha256Hex } from "./utils.js";
 
 function jsonResponse(body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -126,7 +127,7 @@ describe("Telegram client", () => {
     );
   });
 
-  test("setupWebhook omits the secret when none is configured", async () => {
+  test("setupWebhook generates a secret when none is configured", async () => {
     vi.stubEnv("CONVEX_SITE_URL", "https://demo.convex.site");
     vi.stubEnv("TELEGRAM_WEBHOOK_SECRET", undefined);
     const client = new TelegramBot(components.telegram, {
@@ -142,12 +143,14 @@ describe("Telegram client", () => {
     await client.setupWebhook(ctx);
 
     const body = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string) as {
-      secret_token?: string;
+      secret_token: string;
     };
-    expect(body.secret_token).toBeUndefined();
+    expect(body.secret_token).toMatch(/^[0-9a-f]{64}$/);
     expect(ctx.runMutation).toHaveBeenCalledWith(
       components.telegram.webhooks.create,
-      expect.objectContaining({ secretHash: undefined }),
+      expect.objectContaining({
+        secretHash: await sha256Hex(body.secret_token),
+      }),
     );
   });
 
@@ -218,7 +221,7 @@ describe("Telegram client", () => {
     expect(onMessage.mock.calls[0]?.[1]).toEqual(update);
   });
 
-  test("registerRoutes accepts requests when no secret is configured", async () => {
+  test("registerRoutes verifies the stored hash when no secret is configured", async () => {
     vi.stubEnv("TELEGRAM_WEBHOOK_SECRET", undefined);
     const http = httpRouter();
     const onMessage = vi.fn().mockResolvedValue(undefined);
@@ -226,6 +229,7 @@ describe("Telegram client", () => {
       handlers: { message: onMessage },
     });
     const [[, , handler]] = http.getRoutes();
+    const runQuery = vi.fn().mockResolvedValue(true);
 
     const update = {
       update_id: 3,
@@ -237,12 +241,35 @@ describe("Telegram client", () => {
       },
     };
     const response = await (handler as unknown as RouteHandler)._handler(
-      {},
-      webhookRequest(undefined, update),
+      { runQuery },
+      webhookRequest("a-token", update),
     );
 
     expect(response.status).toBe(200);
     expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(runQuery).toHaveBeenCalledWith(
+      components.telegram.webhooks.verifySecretHash,
+      { secretHash: await sha256Hex("a-token") },
+    );
+  });
+
+  test("registerRoutes rejects an unknown token when no secret is configured", async () => {
+    vi.stubEnv("TELEGRAM_WEBHOOK_SECRET", undefined);
+    const http = httpRouter();
+    const onMessage = vi.fn().mockResolvedValue(undefined);
+    registerRoutes(http, components.telegram, {
+      handlers: { message: onMessage },
+    });
+    const [[, , handler]] = http.getRoutes();
+    const runQuery = vi.fn().mockResolvedValue(false);
+
+    const response = await (handler as unknown as RouteHandler)._handler(
+      { runQuery },
+      webhookRequest("bad-token", { update_id: 4 }),
+    );
+
+    expect(response.status).toBe(401);
+    expect(onMessage).not.toHaveBeenCalled();
   });
 
   test("registerRoutes returns 400 on malformed JSON", async () => {

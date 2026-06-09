@@ -4,7 +4,11 @@ import type {
   TelegramAPIResponse,
   TelegramUpdate,
 } from "@gramio/types";
-import { httpActionGeneric } from "convex/server";
+import {
+  httpActionGeneric,
+  type GenericActionCtx,
+  type GenericDataModel,
+} from "convex/server";
 import type { ComponentApi } from "../component/_generated/component.js";
 import type {
   HttpRouter,
@@ -14,6 +18,7 @@ import type {
   TelegramUpdateEvent,
 } from "./types.js";
 import { env } from "../component/_generated/server.js";
+import { generateSecret, normalizeUsername, sha256Hex } from "./utils.js";
 
 export type {
   HttpRouter,
@@ -34,7 +39,8 @@ export type TelegramOptions = {
   token?: string;
   /**
    * Secret used to verify incoming webhook requests. Defaults to
-   * `TELEGRAM_WEBHOOK_SECRET`. When unset, webhook requests are not verified.
+   * `TELEGRAM_WEBHOOK_SECRET`. When unset, {@link TelegramBot.setupWebhook}
+   * generates one and stores its hash for verification.
    *
    * @see https://core.telegram.org/bots/api#setwebhook (`secret_token`)
    */
@@ -94,21 +100,20 @@ export class TelegramBot {
       throw new Error("Failed to fetch bot details from Telegram getMe.");
     }
     const webhookUrl = getWebhookUrl(options?.url, this.webhookPath);
+    const secret = this.webhookSecret ?? generateSecret();
 
     await this.api.setWebhook({
       url: webhookUrl,
-      secret_token: this.webhookSecret,
+      secret_token: secret,
       allowed_updates: allowedUpdates,
       drop_pending_updates: dropPendingUpdates,
     });
 
-    const botUsername = `@${me.username}`;
+    const botUsername = normalizeUsername(me.username);
     await ctx.runMutation(this.component.webhooks.create, {
       botUsername,
       botId: me.id,
-      secretHash: this.webhookSecret
-        ? await sha256Hex(this.webhookSecret)
-        : undefined,
+      secretHash: await sha256Hex(secret),
       settings: { webhookUrl, allowedUpdates, dropPendingUpdates },
     });
 
@@ -129,7 +134,7 @@ export class TelegramBot {
     await this.api.deleteWebhook({ drop_pending_updates: dropPendingUpdates });
     if (me.is_bot && me.username) {
       await ctx.runMutation(this.component.webhooks.remove, {
-        botUsername: `@${me.username}`,
+        botUsername: normalizeUsername(me.username),
       });
     }
   }
@@ -137,7 +142,7 @@ export class TelegramBot {
 
 export function registerRoutes(
   http: HttpRouter,
-  _component: TelegramComponent,
+  component: TelegramComponent,
   config?: RegisterRoutesConfig,
 ) {
   const webhookSecret = getWebhookSecret(config?.webhookSecret);
@@ -148,13 +153,11 @@ export function registerRoutes(
     path: webhookPath,
     method: "POST",
     handler: httpActionGeneric(async (ctx, request) => {
-      if (webhookSecret !== undefined) {
-        const providedSecret = request.headers.get(
-          "X-Telegram-Bot-Api-Secret-Token",
-        );
-        if (providedSecret !== webhookSecret) {
-          return new Response("Unauthorized", { status: 401 });
-        }
+      const providedSecret = request.headers.get(
+        "X-Telegram-Bot-Api-Secret-Token",
+      );
+      if (!(await isVerified(ctx, component, webhookSecret, providedSecret))) {
+        return new Response("Unauthorized", { status: 401 });
       }
 
       let update: TelegramUpdate;
@@ -268,14 +271,21 @@ function getWebhookUrl(url: string | undefined, webhookPath: string) {
   return `${siteUrl}${webhookPath}`;
 }
 
-async function sha256Hex(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(value),
-  );
-  return Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+async function isVerified(
+  ctx: GenericActionCtx<GenericDataModel>,
+  component: TelegramComponent,
+  webhookSecret: string | undefined,
+  providedSecret: string | null,
+): Promise<boolean> {
+  if (webhookSecret !== undefined) {
+    return providedSecret === webhookSecret;
+  }
+  if (!providedSecret) {
+    return false;
+  }
+  return ctx.runQuery(component.webhooks.verifySecretHash, {
+    secretHash: await sha256Hex(providedSecret),
+  });
 }
 
 export default TelegramBot;

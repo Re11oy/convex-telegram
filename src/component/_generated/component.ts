@@ -30,7 +30,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         {
           botId: number;
           botUsername: string;
-          secretHash?: string;
+          secretHash: string;
           settings: {
             allowedUpdates: Array<string>;
             dropPendingUpdates: boolean;
@@ -45,6 +45,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         { botUsername: string },
         null,
+        Name
+      >;
+      verifySecretHash: FunctionReference<
+        "query",
+        "internal",
+        { secretHash: string },
+        boolean,
         Name
       >;
     };

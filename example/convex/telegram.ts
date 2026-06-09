@@ -10,12 +10,11 @@ export const bot = new TelegramBot(components.telegram);
 // deploying (e.g. `npx convex run telegram:setupWebhook`).
 export const setupWebhook = internalAction({
   args: {},
-  returns: v.object({
-    botUsername: v.string(),
-    webhookUrl: v.string(),
-  }),
   handler: async (ctx) => {
-    return await bot.setupWebhook(ctx);
+    return await bot.setupWebhook(ctx, {
+      allowedUpdates: ["message"],
+      dropPendingUpdates: true,
+    });
   },
 });
 

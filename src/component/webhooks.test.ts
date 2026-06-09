@@ -37,11 +37,13 @@ describe("webhooks", () => {
     await t.mutation(api.webhooks.create, {
       botUsername: "@demo_bot",
       botId: 123,
+      secretHash: "deadbeef",
       settings,
     });
     await t.mutation(api.webhooks.create, {
       botUsername: "@demo_bot",
       botId: 456,
+      secretHash: "deadbeef",
       settings,
     });
 
@@ -55,6 +57,7 @@ describe("webhooks", () => {
     await t.mutation(api.webhooks.create, {
       botUsername: "@demo_bot",
       botId: 123,
+      secretHash: "deadbeef",
       settings,
     });
     await t.mutation(api.webhooks.remove, { botUsername: "@demo_bot" });
@@ -68,5 +71,22 @@ describe("webhooks", () => {
     await expect(
       t.mutation(api.webhooks.remove, { botUsername: "@nobody" }),
     ).resolves.toBeNull();
+  });
+
+  test("verifySecretHash matches only a stored hash", async () => {
+    const t = convexTest(schema, modules);
+    await t.mutation(api.webhooks.create, {
+      botUsername: "@demo_bot",
+      botId: 123,
+      secretHash: "deadbeef",
+      settings,
+    });
+
+    await expect(
+      t.query(api.webhooks.verifySecretHash, { secretHash: "deadbeef" }),
+    ).resolves.toBe(true);
+    await expect(
+      t.query(api.webhooks.verifySecretHash, { secretHash: "cafebabe" }),
+    ).resolves.toBe(false);
   });
 });

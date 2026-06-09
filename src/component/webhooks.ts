@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, type MutationCtx } from "./_generated/server.js";
+import { mutation, query, type MutationCtx } from "./_generated/server.js";
 import { vWebhookSettings } from "./schema.js";
 
 async function deleteByUsername(ctx: MutationCtx, botUsername: string) {
@@ -17,7 +17,7 @@ export const create = mutation({
   args: {
     botUsername: v.string(),
     botId: v.float64(),
-    secretHash: v.optional(v.string()),
+    secretHash: v.string(),
     settings: vWebhookSettings,
   },
   returns: v.null(),
@@ -25,6 +25,18 @@ export const create = mutation({
     await deleteByUsername(ctx, args.botUsername);
     await ctx.db.insert("webhooks", args);
     return null;
+  },
+});
+
+export const verifySecretHash = query({
+  args: { secretHash: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const match = await ctx.db
+      .query("webhooks")
+      .withIndex("by_secretHash", (q) => q.eq("secretHash", args.secretHash))
+      .first();
+    return match !== null;
   },
 });
 

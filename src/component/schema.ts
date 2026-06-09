@@ -11,7 +11,9 @@ export default defineSchema({
   webhooks: defineTable({
     botUsername: v.string(),
     botId: v.float64(),
-    secretHash: v.optional(v.string()),
+    secretHash: v.string(),
     settings: vWebhookSettings,
-  }).index("by_botUsername", ["botUsername"]),
+  })
+    .index("by_botUsername", ["botUsername"])
+    .index("by_secretHash", ["secretHash"]),
 });
