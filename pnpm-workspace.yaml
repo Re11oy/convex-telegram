@@ -1,2 +1,7 @@
 allowBuilds:
   esbuild: true
+
+# Refuse dependency versions published less than 1 day ago (1440 minutes, pnpm's
+# v11 default), so a freshly-compromised release is not pulled in. Override a
+# single install with `pnpm install --config.minimumReleaseAge=0` for urgent fixes.
+minimumReleaseAge: 1440
