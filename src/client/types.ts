@@ -6,6 +6,7 @@ import type {
   GenericQueryCtx,
   HttpRouter,
 } from "convex/server";
+import type { TelegramBot } from "./index.js";
 
 // Type utils follow
 
@@ -71,6 +72,50 @@ export type RegisterRoutesConfig = {
    * This runs after default processing and before specific event handlers.
    */
   onUpdate?: TelegramUpdateHandler;
+};
+
+/**
+ * Like {@link TelegramUpdateHandler}, but also receives the {@link TelegramBot}
+ * the update was addressed to, resolved from the registry.
+ */
+export type RegistryUpdateHandler<
+  T extends TelegramUpdateEvent = TelegramUpdateEvent,
+> = (
+  ctx: GenericActionCtx<GenericDataModel>,
+  update: TelegramUpdateForEvent<T>,
+  bot: TelegramBot,
+) => Promise<void>;
+
+/**
+ * Map of event types to their registry handlers.
+ */
+export type RegistryUpdateHandlers = {
+  [K in TelegramUpdateEvent]?: RegistryUpdateHandler<K>;
+};
+
+export type RunnableRegistryUpdateHandler = (
+  ctx: GenericActionCtx<GenericDataModel>,
+  update: TelegramUpdate,
+  bot: TelegramBot,
+) => Promise<void>;
+
+/**
+ * Configuration for a {@link TelegramBotRegistry}.
+ */
+export type TelegramBotRegistryOptions = {
+  /**
+   * Shared webhook path that every registered bot points at. Defaults to
+   * `/telegram/webhook`. Must start with `/`.
+   */
+  webhookPath?: string;
+  /**
+   * Optional handlers for specific update events.
+   */
+  handlers?: RegistryUpdateHandlers;
+  /**
+   * Optional handler for all update events, run before the specific handlers.
+   */
+  onUpdate?: RegistryUpdateHandler;
 };
 
 /**

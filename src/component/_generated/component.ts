@@ -23,6 +23,43 @@ import type { FunctionReference } from "convex/server";
  */
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
+    bots: {
+      getByBotId: FunctionReference<
+        "query",
+        "internal",
+        { botId: number },
+        { botId: number; botUsername: string; token: string } | null,
+        Name
+      >;
+      list: FunctionReference<
+        "query",
+        "internal",
+        {},
+        Array<{ botId: number; botUsername: string; token: string }>,
+        Name
+      >;
+      remove: FunctionReference<
+        "mutation",
+        "internal",
+        { botId: number },
+        null,
+        Name
+      >;
+      resolveBySecret: FunctionReference<
+        "query",
+        "internal",
+        { secretHash: string },
+        { botId: number; botUsername: string; token: string } | null,
+        Name
+      >;
+      upsert: FunctionReference<
+        "mutation",
+        "internal",
+        { botId: number; botUsername: string; token: string },
+        null,
+        Name
+      >;
+    };
     webhooks: {
       create: FunctionReference<
         "mutation",

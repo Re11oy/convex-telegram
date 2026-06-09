@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as bots from "../bots.js";
 import type * as webhooks from "../webhooks.js";
 
 import type {
@@ -18,6 +19,7 @@ import type {
 import { anyApi, componentsGeneric } from "convex/server";
 
 const fullApi: ApiFromModules<{
+  bots: typeof bots;
   webhooks: typeof webhooks;
 }> = anyApi as any;
 
