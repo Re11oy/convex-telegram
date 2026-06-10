@@ -39,8 +39,8 @@ importers:
         specifier: 1.40.0
         version: 1.40.0(react@19.2.7)
       convex-test:
-        specifier: 0.0.50
-        version: 0.0.50(convex@1.40.0(react@19.2.7))
+        specifier: 0.0.53
+        version: 0.0.53(convex@1.40.0(react@19.2.7))
       eslint:
         specifier: 9.39.4
         version: 9.39.4(jiti@2.7.0)
@@ -950,8 +950,8 @@ packages:
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
 
-  convex-test@0.0.50:
-    resolution: {integrity: sha512-rMNfrgcKJGToYDqNns2n1AO9KUP1NyC/AF9ldYEuWwTfRbgC9RQiHjlZsZQ/sOjLIVPUyKKIjoI/fNJUzy1urw==}
+  convex-test@0.0.53:
+    resolution: {integrity: sha512-bouZQTnTvZi8IHljHL++yClj1vcV+/9ZxEcd8JZz7RDxOfPkRKrkMgkk/xlX4M1EAiwcEJPNiQE7VJFvDM3lCQ==}
     peerDependencies:
       convex: ^1.32.0
 
@@ -2500,7 +2500,7 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  convex-test@0.0.50(convex@1.40.0(react@19.2.7)):
+  convex-test@0.0.53(convex@1.40.0(react@19.2.7)):
     dependencies:
       convex: 1.40.0(react@19.2.7)
 
