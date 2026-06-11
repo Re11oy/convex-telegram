@@ -53,6 +53,49 @@ describe("Telegram client", () => {
     const client = new TelegramBot(components.telegram, { token: "t" });
     expect(client.component).toBeDefined();
     expect(client.api).toBeDefined();
+    expect(client.outbound).toBeDefined();
+  });
+
+  test("outbound.send enqueues through the component", async () => {
+    const client = new TelegramBot(components.telegram);
+    const ctx = mockActionCtx();
+    ctx.runMutation.mockResolvedValue("msg_id");
+
+    const id = await client.outbound.send(
+      ctx,
+      { chat_id: 42, text: "hello" },
+      { clientRef: "ref-1" },
+    );
+
+    expect(id).toBe("msg_id");
+    expect(ctx.runMutation).toHaveBeenCalledWith(
+      components.telegram.outbound.enqueue,
+      {
+        method: "sendMessage",
+        params: { chat_id: 42, text: "hello" },
+        clientRef: "ref-1",
+        onOutboundEvent: undefined,
+      },
+    );
+  });
+
+  test("outbound status and cancel pass the id through", async () => {
+    const client = new TelegramBot(components.telegram);
+    const ctx = mockActionCtx();
+    ctx.runQuery.mockResolvedValue(null);
+    ctx.runMutation.mockResolvedValue(false);
+    const id = "msg_id" as Parameters<typeof client.outbound.status>[1];
+
+    await expect(client.outbound.status(ctx, id)).resolves.toBeNull();
+    expect(ctx.runQuery).toHaveBeenCalledWith(
+      components.telegram.outbound.status,
+      { id },
+    );
+    await expect(client.outbound.cancel(ctx, id)).resolves.toBe(false);
+    expect(ctx.runMutation).toHaveBeenCalledWith(
+      components.telegram.outbound.cancel,
+      { id },
+    );
   });
 
   test("requires a bot token when calling the Telegram API", async () => {

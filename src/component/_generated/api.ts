@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as outbound from "../outbound.js";
+import type * as shared from "../shared.js";
 import type * as webhooks from "../webhooks.js";
 
 import type {
@@ -18,6 +20,8 @@ import type {
 import { anyApi, componentsGeneric } from "convex/server";
 
 const fullApi: ApiFromModules<{
+  outbound: typeof outbound;
+  shared: typeof shared;
   webhooks: typeof webhooks;
 }> = anyApi as any;
 
@@ -47,4 +51,6 @@ export const internal: FilterApi<
   FunctionReference<any, "internal">
 > = anyApi as any;
 
-export const components = componentsGeneric() as unknown as {};
+export const components = componentsGeneric() as unknown as {
+  workpool: import("@convex-dev/workpool/_generated/component.js").ComponentApi<"workpool">;
+};

@@ -10,6 +10,9 @@ based on [@gramio/types](https://www.npmjs.com/package/@gramio/types).
 
 - **Send messages** (and call any Bot API method) with the typed `bot.api.*`
   client.
+- **Send durably** with `bot.outbound.*`: enqueue from a mutation and the
+  component retries until Telegram accepts the message, honouring flood limits
+  and reporting the outcome back to your app.
 - **Receive updates** (messages, callback queries, …) by registering a webhook
   route and handling typed updates.
 
@@ -80,6 +83,102 @@ export const sendMessage = action({
 });
 ```
 
+`bot.api.*` is raw and immediate: if the call fails (crash, restart, 429, 5xx),
+the message is gone. For production sends, use the durable path below.
+
+## Durable sending
+
+`bot.outbound.send` enqueues the message inside your mutation — transactional
+with your app state — and the component delivers it in the background: 5xx and
+network errors are retried with backoff, `429` flood waits are honoured using
+Telegram's exact `retry_after`, and group→supergroup migrations are rewritten
+and resent automatically.
+
+The guarantee is **eventually accepted by the Telegram Bot API**: a retry after
+an ambiguous failure (crash mid-send) may deliver a duplicate, and Telegram
+offers no idempotency key or per-device delivery receipts. Same-chat messages
+are sent in enqueue order on the happy path; a retry may reorder them.
+
+Requires the `TELEGRAM_BOT_TOKEN` environment variable (the client `token`
+option only configures `bot.api`).
+
+```ts
+import { mutation } from "./_generated/server";
+import { v } from "convex/values";
+import { bot } from "./telegram";
+
+export const replyToUser = mutation({
+  args: { chatId: v.float64(), text: v.string() },
+  handler: async (ctx, args) => {
+    const id = await bot.outbound.send(ctx, {
+      chat_id: args.chatId,
+      text: args.text,
+    });
+    return id; // durable handle for bot.outbound.status / cancel
+  },
+});
+```
+
+### Reacting to outcomes
+
+Pass `onOutboundEvent` to run a mutation whenever a message reaches a terminal
+state (`sent` / `failed` / `cancelled`). `clientRef` links the event back to
+your own records:
+
+```ts
+// convex/telegram.ts
+import { TelegramBot, vOnOutboundEventArgs } from "convex-telegram";
+import { components, internal } from "./_generated/api";
+import { internalMutation } from "./_generated/server";
+
+export const bot: TelegramBot = new TelegramBot(components.telegram, {
+  onOutboundEvent: internal.telegram.handleOutboundEvent,
+});
+
+export const handleOutboundEvent = internalMutation({
+  args: vOnOutboundEventArgs,
+  handler: async (ctx, event) => {
+    // event: { id, event, clientRef?, telegramMessageId?, errorCode?, errorMessage? }
+  },
+});
+```
+
+Event delivery is best-effort; `bot.outbound.status(ctx, id)` is the source of
+truth and returns `null` once the row has been cleaned up. When a chat blocks
+the bot, the message fails with the Telegram error — whether to stop sending to
+that chat is your app's policy.
+
+### Cleanup
+
+Delivered rows are kept for inspection until you delete them. Register a cron —
+**without it the table grows forever**:
+
+```ts
+// convex/crons.ts
+import { cronJobs } from "convex/server";
+import { components, internal } from "./_generated/api";
+import { internalMutation } from "./_generated/server";
+
+export const cleanupTelegramOutbound = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    await ctx.runMutation(
+      components.telegram.outbound.cleanupOldOutboundMessages,
+      { olderThan: 7 * 24 * 60 * 60 * 1000 },
+    );
+  },
+});
+
+const crons = cronJobs();
+crons.daily(
+  "telegram outbound cleanup",
+  { hourUTC: 4, minuteUTC: 0 },
+  internal.crons.cleanupTelegramOutbound,
+  {},
+);
+export default crons;
+```
+
 ## Receiving messages
 
 To receive [updates](https://core.telegram.org/bots/api#getting-updates) you
@@ -92,8 +191,8 @@ npx convex env set TELEGRAM_WEBHOOK_SECRET <random-string>
 ```
 
 The component always verifies the `X-Telegram-Bot-Api-Secret-Token` header. Set
-this to control the secret yourself; when unset, `setupWebhook` generates one and
-incoming requests are verified against its stored hash.
+this to control the secret yourself; when unset, `setupWebhook` generates one
+and incoming requests are verified against its stored hash.
 
 ### 2. Register the webhook route
 
@@ -162,17 +261,21 @@ Handler keys match fields on the
 
 ```ts
 const bot = new TelegramBot(components.telegram, {
-  token: "...", // optional, defaults to TELEGRAM_BOT_TOKEN
+  token: "...", // optional, defaults to TELEGRAM_BOT_TOKEN (bot.api only)
   webhookSecret: "...", // optional, defaults to TELEGRAM_WEBHOOK_SECRET
   webhookPath: "/telegram/webhook",
+  onOutboundEvent: internal.telegram.handleOutboundEvent, // optional
 });
 ```
 
-| Method                | Description                                                        |
-| --------------------- | ------------------------------------------------------------------ |
-| `bot.api`             | Typed [Bot API](https://core.telegram.org/bots/api) client         |
-| `bot.setupWebhook()`  | Calls Telegram `setWebhook`, returns `{ botUsername, webhookUrl }` |
-| `bot.deleteWebhook()` | Calls Telegram `deleteWebhook`                                     |
+| Method                                  | Description                                                           |
+| --------------------------------------- | --------------------------------------------------------------------- |
+| `bot.api`                               | Typed [Bot API](https://core.telegram.org/bots/api) client, immediate |
+| `bot.outbound.send(ctx, params, opts?)` | Durably queue a `sendMessage`, returns an `OutboundMessageId`         |
+| `bot.outbound.status(ctx, id)`          | `{ status, telegramMessageId?, … }` or `null` once cleaned up         |
+| `bot.outbound.cancel(ctx, id)`          | Cancel a still-`waiting` message, returns whether it took effect      |
+| `bot.setupWebhook()`                    | Calls Telegram `setWebhook`, returns `{ botUsername, webhookUrl }`    |
+| `bot.deleteWebhook()`                   | Calls Telegram `deleteWebhook`                                        |
 
 ### registerRoutes
 

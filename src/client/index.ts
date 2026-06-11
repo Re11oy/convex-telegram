@@ -1,11 +1,14 @@
 import type {
   APIMethodParams,
   APIMethods,
+  SendMessageParams,
   TelegramAPIResponse,
   TelegramUpdate,
 } from "@gramio/types";
 import {
+  createFunctionHandle,
   httpActionGeneric,
+  type FunctionReference,
   type GenericActionCtx,
   type GenericDataModel,
 } from "convex/server";
@@ -14,10 +17,17 @@ import type {
   HttpRouter,
   RegisterRoutesConfig,
   ActionCtx,
+  MutationCtx,
+  QueryCtx,
   RunnableTelegramUpdateHandler,
   TelegramUpdateEvent,
 } from "./types.js";
 import { env } from "../component/_generated/server.js";
+import type {
+  OnOutboundEventArgs,
+  OutboundMessageId,
+  OutboundMessageStatus,
+} from "../component/shared.js";
 import { generateSecret, normalizeUsername, sha256Hex } from "./utils.js";
 
 export type {
@@ -28,6 +38,15 @@ export type {
   TelegramUpdateHandler,
   TelegramUpdateHandlers,
 } from "./types.js";
+export {
+  vOnOutboundEventArgs,
+  vOutboundMessageId,
+  vOutboundMessageStatus,
+  type OnOutboundEventArgs,
+  type OutboundMessageId,
+  type OutboundMessageStatus,
+  type OutboundStatus,
+} from "../component/shared.js";
 
 const TBA_BASE_URL = "https://api.telegram.org/bot";
 const DEFAULT_WEBHOOK_PATH = "/telegram/webhook";
@@ -47,6 +66,22 @@ export type TelegramOptions = {
   webhookSecret?: string;
   /** Webhook route path. Defaults to `/telegram/webhook`. Must start with `/`. */
   webhookPath?: string;
+  /**
+   * Mutation run after a durable outbound message reaches a terminal state
+   * (`sent` / `failed` / `cancelled`). Declare it with `vOnOutboundEventArgs`.
+   * Delivery is best-effort: if the handler throws, the event is lost —
+   * {@link OutboundClient.status} remains the source of truth.
+   */
+  onOutboundEvent?: FunctionReference<
+    "mutation",
+    "public" | "internal",
+    OnOutboundEventArgs
+  >;
+};
+
+export type OutboundSendOptions = {
+  /** Opaque app-side correlation value, echoed in `onOutboundEvent`. */
+  clientRef?: string;
 };
 
 export type SetupWebhookOptions = {
@@ -71,6 +106,15 @@ export class TelegramBot {
    * @see https://core.telegram.org/bots/api#available-methods
    */
   public readonly api: APIMethods;
+  /**
+   * Durable outbound delivery: enqueue from a mutation, the component
+   * retries until Telegram accepts the message. `bot.api.*` is raw &
+   * immediate; `bot.outbound.*` is durable & queued.
+   *
+   * Requires the `TELEGRAM_BOT_TOKEN` environment variable (the `token`
+   * option only configures `bot.api`).
+   */
+  public readonly outbound: OutboundClient;
   private readonly webhookPath: string;
   private readonly webhookSecret: string | undefined;
 
@@ -79,6 +123,7 @@ export class TelegramBot {
     options?: TelegramOptions,
   ) {
     this.api = botApiProxy(() => getRequiredToken(options?.token));
+    this.outbound = new OutboundClient(component, options?.onOutboundEvent);
     this.webhookPath = getWebhookPath(options?.webhookPath);
     this.webhookSecret = getWebhookSecret(options?.webhookSecret);
   }
@@ -137,6 +182,57 @@ export class TelegramBot {
         botUsername: normalizeUsername(me.username),
       });
     }
+  }
+}
+
+export class OutboundClient {
+  constructor(
+    private readonly component: TelegramComponent,
+    private readonly onOutboundEvent?: FunctionReference<
+      "mutation",
+      "public" | "internal",
+      OnOutboundEventArgs
+    >,
+  ) {}
+
+  /**
+   * Durably queue a `sendMessage`. The component delivers it eventually:
+   * 5xx/network errors are retried with backoff, flood waits honour
+   * Telegram's `retry_after` exactly, and the returned id can be used with
+   * {@link status} and {@link cancel}.
+   *
+   * Call from a mutation so enqueueing is transactional with your app
+   * state. A retry after an ambiguous failure (crash mid-send) may deliver
+   * a duplicate — Telegram has no idempotency key.
+   */
+  async send(
+    ctx: MutationCtx,
+    params: SendMessageParams,
+    options?: OutboundSendOptions,
+  ): Promise<OutboundMessageId> {
+    const onOutboundEvent =
+      this.onOutboundEvent === undefined
+        ? undefined
+        : await createFunctionHandle(this.onOutboundEvent);
+    return (await ctx.runMutation(this.component.outbound.enqueue, {
+      method: "sendMessage",
+      params,
+      clientRef: options?.clientRef,
+      onOutboundEvent,
+    })) as OutboundMessageId;
+  }
+
+  /** `null` for unknown ids, including rows deleted by the cleanup cron. */
+  async status(
+    ctx: QueryCtx,
+    id: OutboundMessageId,
+  ): Promise<OutboundMessageStatus | null> {
+    return await ctx.runQuery(this.component.outbound.status, { id });
+  }
+
+  /** Cancel a message that is still `waiting`. Returns whether it took effect. */
+  async cancel(ctx: MutationCtx, id: OutboundMessageId): Promise<boolean> {
+    return await ctx.runMutation(this.component.outbound.cancel, { id });
   }
 }
 

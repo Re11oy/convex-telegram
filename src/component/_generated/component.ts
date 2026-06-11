@@ -23,6 +23,48 @@ import type { FunctionReference } from "convex/server";
  */
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
+    outbound: {
+      cancel: FunctionReference<
+        "mutation",
+        "internal",
+        { id: string },
+        boolean,
+        Name
+      >;
+      cleanupOldOutboundMessages: FunctionReference<
+        "mutation",
+        "internal",
+        { olderThan?: number },
+        null,
+        Name
+      >;
+      enqueue: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          clientRef?: string;
+          method: string;
+          onOutboundEvent?: string;
+          params: any;
+        },
+        string,
+        Name
+      >;
+      status: FunctionReference<
+        "query",
+        "internal",
+        { id: string },
+        null | {
+          attemptCount: number;
+          clientRef?: string;
+          errorCode?: number;
+          errorMessage?: string;
+          status: "waiting" | "sent" | "failed" | "cancelled";
+          telegramMessageId?: number;
+        },
+        Name
+      >;
+    };
     webhooks: {
       create: FunctionReference<
         "mutation",
