@@ -97,8 +97,8 @@ export const recordInbound = internalMutation({
 });
 
 // A reply typed into the composer is outbound. Persist it and enqueue durable
-// delivery in the same transaction; the component retries until Telegram
-// accepts it and reports back via handleOutboundEvent (linked by clientRef).
+// delivery in the same transaction; the outcome comes back to
+// handleOutboundEvent, linked by clientRef.
 export const send = mutation({
   args: { chatId: v.float64(), text: v.string() },
   handler: async (ctx, { chatId, text }) => {

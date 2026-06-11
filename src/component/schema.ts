@@ -35,8 +35,8 @@ export default defineSchema({
     finalizedAt: v.number(),
   }).index("by_finalizedAt", ["finalizedAt"]),
 
-  // Latest options win (Resend pattern). Holds the app's onOutboundEvent
-  // function handle; never the bot token.
+  // Latest client options win. Holds the app's onOutboundEvent function
+  // handle; never the bot token.
   lastOutboundOptions: defineTable({
     onOutboundEvent: v.optional(v.string()),
   }),

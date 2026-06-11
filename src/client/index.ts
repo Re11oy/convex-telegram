@@ -211,9 +211,8 @@ export class OutboundClient {
     options?: OutboundSendOptions,
   ): Promise<OutboundMessageId> {
     const onOutboundEvent =
-      this.onOutboundEvent === undefined
-        ? undefined
-        : await createFunctionHandle(this.onOutboundEvent);
+      this.onOutboundEvent &&
+      (await createFunctionHandle(this.onOutboundEvent));
     return (await ctx.runMutation(this.component.outbound.enqueue, {
       method: "sendMessage",
       params,

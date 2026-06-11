@@ -10,6 +10,7 @@ import {
   internalQuery,
   mutation,
   query,
+  type DatabaseReader,
   type MutationCtx,
 } from "./_generated/server.js";
 import {
@@ -18,15 +19,12 @@ import {
   type OnOutboundEventArgs,
 } from "./shared.js";
 
-const TBA_BASE_URL = "https://api.telegram.org/bot";
-
 // 5xx/network retries, handled inside a single workpool work item.
 const RETRY = { maxAttempts: 5, initialBackoffMs: 1_000, base: 2 };
 // 429/migrate deferrals re-enqueue a fresh work item; this bounds them.
 const MAX_DEFERRALS = 20;
 const DEFAULT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 const CLEANUP_BATCH_SIZE = 100;
-const PENDING_FINALIZED_AT = Number.MAX_SAFE_INTEGER;
 
 const pool = new Workpool(components.workpool, { maxParallelism: 4 });
 
@@ -57,17 +55,6 @@ type TelegramResponse =
       parameters?: { retry_after?: number; migrate_to_chat_id?: number };
     };
 
-function requireToken(): string {
-  const token = (env.TELEGRAM_BOT_TOKEN ?? "").trim();
-  if (token === "") {
-    throw new Error(
-      "bot.outbound requires the TELEGRAM_BOT_TOKEN environment variable " +
-        "(the client `token` option only configures bot.api).",
-    );
-  }
-  return token;
-}
-
 export const enqueue = mutation({
   args: {
     method: v.string(),
@@ -77,9 +64,14 @@ export const enqueue = mutation({
   },
   returns: v.id("outboundMessages"),
   handler: async (ctx, args) => {
-    requireToken();
+    if ((env.TELEGRAM_BOT_TOKEN ?? "").trim() === "") {
+      throw new Error(
+        "bot.outbound requires the TELEGRAM_BOT_TOKEN environment variable " +
+          "(the client `token` option only configures bot.api).",
+      );
+    }
 
-    // Latest options win (Resend pattern).
+    // Latest client options win.
     const options = await ctx.db.query("lastOutboundOptions").first();
     if (options === null) {
       await ctx.db.insert("lastOutboundOptions", {
@@ -97,7 +89,7 @@ export const enqueue = mutation({
       status: "waiting",
       attemptCount: 0,
       clientRef: args.clientRef,
-      finalizedAt: PENDING_FINALIZED_AT,
+      finalizedAt: Number.MAX_SAFE_INTEGER,
     });
     await enqueueDeliver(ctx, id, 0);
     return id;
@@ -138,11 +130,14 @@ export const deliver = internalAction({
     }
 
     // Network errors propagate out of fetch → workpool retries.
-    const response = await fetch(`${TBA_BASE_URL}${token}/${row.method}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(row.params),
-    });
+    const response = await fetch(
+      `https://api.telegram.org/bot${token}/${row.method}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(row.params),
+      },
+    );
 
     let data: TelegramResponse;
     try {
@@ -242,11 +237,7 @@ export const status = query({
   args: { id: v.string() },
   returns: v.union(v.null(), vOutboundMessageStatus),
   handler: async (ctx, { id }) => {
-    const normalized = ctx.db.normalizeId("outboundMessages", id);
-    const row =
-      normalized === null
-        ? null
-        : await ctx.db.get("outboundMessages", normalized);
+    const row = await findByPublicId(ctx.db, id);
     if (row === null) {
       return null;
     }
@@ -267,11 +258,7 @@ export const cancel = mutation({
   args: { id: v.string() },
   returns: v.boolean(),
   handler: async (ctx, { id }) => {
-    const normalized = ctx.db.normalizeId("outboundMessages", id);
-    const row =
-      normalized === null
-        ? null
-        : await ctx.db.get("outboundMessages", normalized);
+    const row = await findByPublicId(ctx.db, id);
     if (row === null || row.status !== "waiting") {
       return false;
     }
@@ -279,6 +266,14 @@ export const cancel = mutation({
     return true;
   },
 });
+
+// Ids arrive as plain strings and may be expired or garbage; both are null.
+async function findByPublicId(db: DatabaseReader, id: string) {
+  const normalized = db.normalizeId("outboundMessages", id);
+  return normalized === null
+    ? null
+    : await db.get("outboundMessages", normalized);
+}
 
 // Deletes terminal rows only; `waiting` rows sit at MAX_SAFE_INTEGER and
 // are never seen by this scan. The app owns the cron (see README).
