@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api.js";
 import { internalMutation, mutation, query } from "./_generated/server.js";
+import { bot } from "./telegram.js";
 
 const WELCOME_MESSAGE = [
   "This is a Convex component example.",
@@ -76,15 +77,16 @@ export const recordInbound = internalMutation({
     });
 
     if (isFirstMessage) {
-      await ctx.db.insert("messages", {
+      const welcomeId = await ctx.db.insert("messages", {
         chatId,
         text: WELCOME_MESSAGE,
         direction: "outbound",
       });
-      await ctx.scheduler.runAfter(0, internal.telegram.deliverToTelegram, {
-        chatId,
-        text: WELCOME_MESSAGE,
-      });
+      await bot.outbound.send(
+        ctx,
+        { chat_id: chatId, text: WELCOME_MESSAGE },
+        { clientRef: welcomeId },
+      );
       await ctx.scheduler.runAfter(
         THREAD_TTL_MS,
         internal.messages.deleteThread,
@@ -94,16 +96,22 @@ export const recordInbound = internalMutation({
   },
 });
 
-// A reply typed into the composer is outbound. Persist it, then deliver it to
-// Telegram from a scheduled action (mutations can't call `fetch`).
+// A reply typed into the composer is outbound. Persist it and enqueue durable
+// delivery in the same transaction; the component retries until Telegram
+// accepts it and reports back via handleOutboundEvent (linked by clientRef).
 export const send = mutation({
   args: { chatId: v.float64(), text: v.string() },
   handler: async (ctx, { chatId, text }) => {
-    await ctx.db.insert("messages", { chatId, text, direction: "outbound" });
-    await ctx.scheduler.runAfter(0, internal.telegram.deliverToTelegram, {
+    const messageId = await ctx.db.insert("messages", {
       chatId,
       text,
+      direction: "outbound",
     });
+    await bot.outbound.send(
+      ctx,
+      { chat_id: chatId, text },
+      { clientRef: messageId },
+    );
   },
 });
 

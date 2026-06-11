@@ -1,10 +1,13 @@
-import { TelegramBot } from "convex-telegram";
+import { TelegramBot, vOnOutboundEventArgs } from "convex-telegram";
 import { v } from "convex/values";
-import { components } from "./_generated/api.js";
-import { internalAction } from "./_generated/server.js";
+import { components, internal } from "./_generated/api.js";
+import { internalAction, internalMutation } from "./_generated/server.js";
 
 // Reads TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET from the environment.
-export const bot = new TelegramBot(components.telegram);
+// The explicit annotation breaks the type cycle with `internal.telegram`.
+export const bot: TelegramBot = new TelegramBot(components.telegram, {
+  onOutboundEvent: internal.telegram.handleOutboundEvent,
+});
 
 // Point Telegram at this deployment's webhook endpoint. Run once after
 // deploying (e.g. `npx convex run telegram:setupWebhook`).
@@ -27,11 +30,33 @@ export const deleteWebhook = internalAction({
   },
 });
 
-export const deliverToTelegram = internalAction({
-  args: { chatId: v.float64(), text: v.string() },
+// Links delivery outcomes back to our messages table: `clientRef` carries
+// the messages._id passed to bot.outbound.send.
+export const handleOutboundEvent = internalMutation({
+  args: vOnOutboundEventArgs,
   returns: v.null(),
-  handler: async (_ctx, { chatId, text }) => {
-    await bot.api.sendMessage({ chat_id: chatId, text });
+  handler: async (ctx, event) => {
+    const messageId =
+      event.clientRef === undefined
+        ? null
+        : ctx.db.normalizeId("messages", event.clientRef);
+    if (event.event === "sent") {
+      // The row may already be gone (threads expire after an hour).
+      if (
+        messageId !== null &&
+        (await ctx.db.get("messages", messageId)) !== null
+      ) {
+        await ctx.db.patch("messages", messageId, {
+          telegramMessageId: event.telegramMessageId,
+        });
+      }
+    } else {
+      console.warn(
+        `Telegram delivery ${event.event} for message ${event.clientRef}:`,
+        event.errorCode,
+        event.errorMessage,
+      );
+    }
     return null;
   },
 });
