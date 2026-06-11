@@ -30,14 +30,11 @@ export default defineSchema({
     // Counts 429/migrate deferrals, not workpool's internal 5xx retries.
     attemptCount: v.number(),
     clientRef: v.optional(v.string()),
+    // App event handle, frozen at send time so concurrently configured
+    // clients can't clobber each other's callbacks. Never the bot token.
+    onOutboundEvent: v.optional(v.string()),
     // MAX_SAFE_INTEGER until terminal, so the cleanup scan never sees
     // waiting rows.
     finalizedAt: v.number(),
   }).index("by_finalizedAt", ["finalizedAt"]),
-
-  // Latest client options win. Holds the app's onOutboundEvent function
-  // handle; never the bot token.
-  lastOutboundOptions: defineTable({
-    onOutboundEvent: v.optional(v.string()),
-  }),
 });

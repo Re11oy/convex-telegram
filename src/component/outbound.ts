@@ -71,24 +71,13 @@ export const enqueue = mutation({
       );
     }
 
-    // Latest client options win.
-    const options = await ctx.db.query("lastOutboundOptions").first();
-    if (options === null) {
-      await ctx.db.insert("lastOutboundOptions", {
-        onOutboundEvent: args.onOutboundEvent,
-      });
-    } else if (options.onOutboundEvent !== args.onOutboundEvent) {
-      await ctx.db.patch("lastOutboundOptions", options._id, {
-        onOutboundEvent: args.onOutboundEvent,
-      });
-    }
-
     const id = await ctx.db.insert("outboundMessages", {
       method: args.method,
       params: args.params,
       status: "waiting",
       attemptCount: 0,
       clientRef: args.clientRef,
+      onOutboundEvent: args.onOutboundEvent,
       finalizedAt: Number.MAX_SAFE_INTEGER,
     });
     await enqueueDeliver(ctx, id, 0);
@@ -333,8 +322,7 @@ async function finalizeRow(
     finalizedAt: Date.now(),
   });
 
-  const options = await ctx.db.query("lastOutboundOptions").first();
-  const handle = options?.onOutboundEvent;
+  const handle = row.onOutboundEvent;
   if (handle === undefined) {
     return;
   }
