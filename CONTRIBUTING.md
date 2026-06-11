@@ -85,4 +85,3 @@ Each command runs, in order:
    and staged so it lands in the version commit.
 4. The version commit and git tag are created, the package is published to npm,
    and both are pushed with `git push --follow-tags`.
-
