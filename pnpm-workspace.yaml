@@ -5,3 +5,6 @@ allowBuilds:
 # v11 default), so a freshly-compromised release is not pulled in. Override a
 # single install with `pnpm install --config.minimumReleaseAge=0` for urgent fixes.
 minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  # Renovate security update: pnpm@11.8.0
+  - pnpm@11.8.0
