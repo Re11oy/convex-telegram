@@ -1,22 +1,12 @@
 allowBuilds:
   esbuild: true
 
-# Refuse dependency versions published less than 14 days ago (20160 minutes), so
-# a freshly-compromised release is not pulled in. This matches Renovate's
-# minimumReleaseAge and is the only age gate on transitive dependencies during
-# lock file maintenance. Renovate adds minimumReleaseAgeExclude entries for
-# security updates. Override a single install with
-# `pnpm install --config.minimumReleaseAge=0` for urgent fixes.
+# Only install versions published at least 14 days ago (matches Renovate).
+# Override once with `pnpm install --config.minimumReleaseAge=0`.
 minimumReleaseAge: 20160
 minimumReleaseAgeExclude:
-  # Type declarations only, never executed. Renovate applies a shorter 3-day
-  # wait to it instead (see renovate.json), so new Bot API types ship sooner.
-  # Lock file maintenance may pick up a newer in-range version before that; the
-  # range-bumping release PR still follows once the 3 days pass.
+  # Types only; Renovate applies a 3-day wait to it instead.
   - "@gramio/types"
-# Renovate only excludes the package a security update bumps, but monorepos like
-# vitest pin sibling packages (@vitest/*) published at the same time. Without
-# this, pnpm fails with ERR_PNPM_NO_MATURE_MATCHING_VERSION until they age out.
-# When no mature version satisfies a range, fall back to the newer one and record
-# it in minimumReleaseAgeExclude; ranges with a mature match still get it.
+# If no old-enough version satisfies a range (e.g. the @vitest/* siblings of a
+# security fix), use the newer one and add it to minimumReleaseAgeExclude.
 minimumReleaseAgeStrict: false

@@ -34,6 +34,7 @@ pnpm build
 pnpm test
 pnpm typecheck
 pnpm lint
+pnpm format:check
 ```
 
 ## Commits
@@ -70,51 +71,22 @@ it is not obvious. Mark breaking changes with a `!` after the type
 
 ## Releasing
 
-Releases are automated with
-[release-please](https://github.com/googleapis/release-please) and published by
-the [Release workflow](./.github/workflows/release.yml). Don't bump the version
-or edit [CHANGELOG.md](./CHANGELOG.md) by hand.
+Releases are automated by
+[release-please](https://github.com/googleapis/release-please) in
+[`release.yml`](./.github/workflows/release.yml). Don't bump the version or edit
+`CHANGELOG.md` by hand.
 
-1. Every push to `main` first runs the full gate (clean install, build, test,
-   typecheck, lint, format check); nothing below happens unless it passes.
-2. release-please then updates an open release PR. It bumps the version in
-   `package.json` and adds a CHANGELOG entry based on the commit types since the
-   last release: `fix` → patch, `feat` → minor, and while the version is below
-   1.0.0 a breaking change also bumps the minor version. PRs are squash-merged,
-   so the PR title is the commit that counts. Use `feat` and `fix` only for
-   changes to the published package; repository tooling (CI, Renovate, pnpm
-   settings) is `ci` or `chore`. Commits that only touch `.github/` are left out
-   either way.
-3. Merging the release PR tags the release (`vX.Y.Z`) and creates the GitHub
-   release.
-4. The workflow then builds the tag and stages it on npm with
-   [trusted publishing](https://docs.npmjs.com/trusted-publishers): no npm token
-   is stored anywhere, and npm attaches a provenance attestation. A prerelease
-   version such as `0.2.0-alpha.0` is staged under its label's dist-tag
-   (`alpha`), not `latest`.
-5. A maintainer approves the staged version with 2FA, which publishes it:
+- The commit type decides the release: `fix` → patch, `feat` → minor. Use them
+  only for changes to the published package; tooling is `ci` or `chore`. PRs are
+  squash-merged, so the PR title is the commit.
+- Every merge to `main` updates the release PR. Merging it tags the release, and
+  CI stages the package on npm (trusted publishing allows staging only).
+- Publish by approving the staged version with 2FA (needs npm 11.15 or newer,
+  e.g. `npx npm@11.20.0`):
 
-   ```sh
-   npm stage list convex-telegram      # find the stage id
-   npm stage download <stage-id>       # optional: inspect the tarball
-   npm stage approve <stage-id>        # or `npm stage reject <stage-id>`
-   ```
+  ```sh
+  npm stage list convex-telegram
+  npm stage approve <stage-id>
+  ```
 
-   `npm stage` needs npm 11.15.0 or newer. With an older npm installed, pin an
-   exact version, e.g. `npx npm@11.20.0 stage …`: `npx npm@11` would reuse the
-   installed npm 11.
-
-The trusted publisher only allows staging, so CI on its own can never make a
-version public.
-
-The release PR is opened with the workflow's built-in token, so CI does not run
-on it; the gate in step 1 runs on the merge commit instead. If staging fails
-after the release was created, fix the cause and use "Re-run failed jobs" on
-that workflow run to stage the same tag.
-
-For quick previews, every PR and push to `main` also gets an installable
-[pkg.pr.new](https://pkg.pr.new) build; the link is posted on the PR.
-
-Trusted publishing is configured on npmjs.com under the package's settings:
-repository `Re11oy/convex-telegram`, workflow `release.yml`, environment `npm`,
-with only `npm stage publish` allowed.
+If staging fails, fix the cause and re-run the failed job.
