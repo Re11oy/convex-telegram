@@ -28,6 +28,11 @@
       "matchUpdateTypes": ["major"],
       "automerge": false,
       "dependencyDashboardApproval": true
+    },
+    {
+      "description": "@gramio/types is updated by separate automation",
+      "matchPackageNames": ["@gramio/types"],
+      "enabled": false
     }
   ]
 }
