@@ -27,6 +27,7 @@
     },
     {
       "groupName": "Routine updates",
+      "matchPackageNames": ["!@gramio/types"],
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "automerge": true
     },
@@ -36,9 +37,26 @@
       "dependencyDashboardApproval": true
     },
     {
-      "description": "@gramio/types is updated by separate automation",
+      "description": "Ship every new @gramio/types (Telegram Bot API types) version as a convex-telegram release: its own fix(deps) PR that raises the range, 3 days after publish, outside the weekend schedule",
       "matchPackageNames": ["@gramio/types"],
-      "enabled": false
+      "minimumReleaseAge": "3 days",
+      "schedule": ["at any time"],
+      "rangeStrategy": "bump",
+      "semanticCommitType": "fix",
+      "semanticCommitScope": "deps"
+    },
+    {
+      "description": "Automerge @gramio/types minor and patch updates so they reach the release PR",
+      "matchPackageNames": ["@gramio/types"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    },
+    {
+      "description": "A new Bot API major version opens a feat(deps) PR for review, without dashboard approval",
+      "matchPackageNames": ["@gramio/types"],
+      "matchUpdateTypes": ["major"],
+      "semanticCommitType": "feat",
+      "dependencyDashboardApproval": false
     }
   ]
 }
