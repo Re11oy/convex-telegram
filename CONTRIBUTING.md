@@ -79,8 +79,9 @@ Releases are automated by
 - The commit type decides the release: `fix` → patch, `feat` → minor. Use them
   only for changes to the published package; tooling is `ci` or `chore`. PRs are
   squash-merged, so the PR title is the commit.
-- Every merge to `main` updates the release PR. Merging it tags the release, and
-  CI stages the package on npm (trusted publishing allows staging only).
+- Merges to `main` update the release PR once the release checks pass. Merging
+  it tags the release, and CI stages the package on npm (trusted publishing
+  allows staging only).
 - Publish by approving the staged version with 2FA (needs npm 11.15 or newer,
   e.g. `npx npm@11.20.0`):
 
