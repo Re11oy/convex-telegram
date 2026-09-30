@@ -165,6 +165,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@gramio/types':
+        specifier: ^10.3.1
+        version: 10.3.1
     devDependencies:
       '@convex-dev/eslint-plugin':
         specifier: 4.0.0
@@ -175,9 +179,6 @@ importers:
       '@eslint/js':
         specifier: 10.0.1
         version: 10.0.1(eslint@10.10.0)
-      '@gramio/types':
-        specifier: 10.2.2
-        version: 10.2.2
       '@types/node':
         specifier: 24.13.5
         version: 24.13.5
@@ -678,8 +679,8 @@ packages:
     resolution: {integrity: sha512-IkO+/KEUvwbVpiURZg+P7zF74z5Jxe0UgJxVni+RtoHQ6IZieXaO02kmadomap/q+l6bc/jdPGGqTjhuZnuz1Q==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@gramio/types@10.2.2':
-    resolution: {integrity: sha512-W0xeIAP8K0B2jaAZ3CU+giEnAHma+MePB4W/8E2oE6Y9PtaOnHpC9bZSj2knG8qUrxiuA1H+rH1zy5lzCaELaA==}
+  '@gramio/types@10.3.1':
+    resolution: {integrity: sha512-K4q9QRMSpHc+B73Vxvf/Xhcbw4VlCoWH2fCUcUWT378yGvpo1i89CqOysj1ZEr4u4LdefPKxVF6b6JDVw9TYDA==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -2138,7 +2139,7 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@gramio/types@10.2.2': {}
+  '@gramio/types@10.3.1': {}
 
   '@humanfs/core@0.19.2':
     dependencies:
