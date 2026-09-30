@@ -24,6 +24,9 @@ pnpm-debug.log*
 # Convex local backend state
 .convex
 
+# Vercel CLI project link
+.vercel
+
 # Editor / OS
 .vscode/*
 !.vscode/extensions.json

@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
   "installCommand": "pnpm install",
-  "buildCommand": "vite build example",
+  "buildCommand": "pnpm build && pnpm exec convex deploy --cmd 'vite build example' --cmd-url-env-var-name VITE_CONVEX_URL",
   "outputDirectory": "example/dist"
 }
