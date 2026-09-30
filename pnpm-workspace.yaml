@@ -8,3 +8,9 @@ allowBuilds:
 # security updates. Override a single install with
 # `pnpm install --config.minimumReleaseAge=0` for urgent fixes.
 minimumReleaseAge: 20160
+# Renovate only excludes the package a security update bumps, but monorepos like
+# vitest pin sibling packages (@vitest/*) published at the same time. Without
+# this, pnpm fails with ERR_PNPM_NO_MATURE_MATCHING_VERSION until they age out.
+# When no mature version satisfies a range, fall back to the newer one and record
+# it in minimumReleaseAgeExclude; ranges with a mature match still get it.
+minimumReleaseAgeStrict: false
