@@ -11,8 +11,7 @@ on:
 permissions: {}
 
 jobs:
-  # Runs before release-please, so a release is only tagged from a commit that
-  # passes the full gate.
+  # A release is only tagged from a commit that passes this gate.
   check:
     name: Check
     runs-on: ubuntu-latest
@@ -28,8 +27,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 
-      # No dependency cache in this workflow: it publishes, so it must not
-      # restore state that other workflows can write.
+      # No dependency cache: this workflow publishes.
       - name: Node setup
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -60,20 +58,18 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      # Opens or updates the release PR from Conventional Commits. Merging that
-      # PR tags the release and creates the GitHub release.
+      # Updates the release PR; merging it tags the release.
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
 
-  # If this job fails after the release was created, fix the cause and use
-  # "Re-run failed jobs": it stages the same tag again.
+  # If this fails after tagging, fix the cause and re-run the failed job.
   publish:
     name: Stage on npm
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # npm trusted publishing is bound to this workflow file and environment.
+    # Must match the npm trusted publisher (release.yml, environment npm).
     environment: npm
     permissions:
       contents: read
@@ -98,11 +94,8 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm build
 
-      # npm (not pnpm) handles the OIDC exchange for trusted publishing. The
-      # trusted publisher only allows staging: the version stays private until a
-      # maintainer runs `npm stage approve` with 2FA, so this job alone cannot
-      # publish. Prereleases such as 0.2.0-alpha.0 are staged under their own
-      # dist-tag (alpha) instead of `latest`.
+      # Staging only: a maintainer publishes with `npm stage approve` (2FA).
+      # Prereleases (0.2.0-alpha.0) get their own dist-tag instead of `latest`.
       - name: Stage for publishing
         run: |
           version=$(node -p 'require("./package.json").version')
@@ -115,5 +108,5 @@ jobs:
           {
             echo "Staged convex-telegram@$version (dist-tag \`$tag\`)."
             echo
-            echo "Approve it with 2FA to publish: \`npm stage list convex-telegram\`, then \`npm stage approve <stage-id>\` (npm 11.15.0 or newer; otherwise pin one, e.g. \`npx npm@11.20.0 stage …\`)."
+            echo "Publish: \`npm stage list convex-telegram\`, then \`npm stage approve <stage-id>\` (npm 11.15+)."
           } >> "$GITHUB_STEP_SUMMARY"
