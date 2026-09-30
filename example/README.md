@@ -30,8 +30,10 @@ npx convex run telegram:setupWebhook
 ## What's where
 
 - `convex/convex.config.ts` — installs the Telegram component.
-- `convex/schema.ts` — the `messages` table (`chatId`, `username?`, `text`, `direction`).
+- `convex/schema.ts` — the `messages` table (`chatId`, `username?`, `text`,
+  `direction`).
 - `convex/http.ts` — the webhook route; records inbound messages.
 - `convex/messages.ts` — `listTopics` (UI feed), `recordInbound`, and `send`.
-- `convex/telegram.ts` — the client, `setupWebhook` / `deleteWebhook`, and `deliverToTelegram`.
+- `convex/telegram.ts` — the client, `setupWebhook` / `deleteWebhook`, and
+  `deliverToTelegram`.
 - `src/App.tsx` — the inbox UI (chat list, conversation, composer).

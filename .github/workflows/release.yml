@@ -114,5 +114,5 @@ jobs:
           {
             echo "Staged convex-telegram@$version (dist-tag \`$tag\`)."
             echo
-            echo "Approve it with 2FA to publish: \`npm stage list convex-telegram\`, then \`npm stage approve <stage-id>\`."
+            echo "Approve it with 2FA to publish: \`npm stage list convex-telegram\`, then \`npm stage approve <stage-id>\` (npm 11.15.0 or newer; otherwise pin one, e.g. \`npx npm@11.20.0 stage …\`)."
           } >> "$GITHUB_STEP_SUMMARY"

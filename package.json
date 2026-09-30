@@ -1,7 +1,10 @@
 {
   "name": "convex-telegram",
   "description": "A Telegram bot component for Convex: send messages via the typed Bot API and receive updates through a verified webhook.",
-  "repository": "github:Re11oy/convex-telegram",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Re11oy/convex-telegram.git"
+  },
   "homepage": "https://github.com/Re11oy/convex-telegram#readme",
   "bugs": {
     "url": "https://github.com/Re11oy/convex-telegram/issues"

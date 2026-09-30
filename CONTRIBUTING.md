@@ -92,6 +92,10 @@ or edit [CHANGELOG.md](./CHANGELOG.md) by hand.
    npm stage approve <stage-id>        # or `npm stage reject <stage-id>`
    ```
 
+   `npm stage` needs npm 11.15.0 or newer. With an older npm installed, pin an
+   exact version, e.g. `npx npm@11.20.0 stage …`: `npx npm@11` would reuse the
+   installed npm 11.
+
 The trusted publisher only allows staging, so CI on its own can never make a
 version public.
 

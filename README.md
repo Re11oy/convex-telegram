@@ -92,8 +92,8 @@ npx convex env set TELEGRAM_WEBHOOK_SECRET <random-string>
 ```
 
 The component always verifies the `X-Telegram-Bot-Api-Secret-Token` header. Set
-this to control the secret yourself; when unset, `setupWebhook` generates one and
-incoming requests are verified against its stored hash.
+this to control the secret yourself; when unset, `setupWebhook` generates one
+and incoming requests are verified against its stored hash.
 
 ### 2. Register the webhook route
 
