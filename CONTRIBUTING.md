@@ -68,7 +68,7 @@ the [Release workflow](./.github/workflows/release.yml). Don't bump the version
 or edit [CHANGELOG.md](./CHANGELOG.md) by hand.
 
 1. Every push to `main` first runs the full gate (clean install, build, test,
-   typecheck, lint); nothing below happens unless it passes.
+   typecheck, lint, format check); nothing below happens unless it passes.
 2. release-please then updates an open release PR. It bumps the version in
    `package.json` and adds a CHANGELOG entry based on the commit types since the
    last release: `fix` → patch, `feat` → minor, and while the version is below
