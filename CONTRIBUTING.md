@@ -79,19 +79,30 @@ or edit [CHANGELOG.md](./CHANGELOG.md) by hand.
    either way.
 3. Merging the release PR tags the release (`vX.Y.Z`) and creates the GitHub
    release.
-4. The workflow then builds the tag and publishes it to npm with
+4. The workflow then builds the tag and stages it on npm with
    [trusted publishing](https://docs.npmjs.com/trusted-publishers): no npm token
    is stored anywhere, and npm attaches a provenance attestation. A prerelease
-   version such as `0.2.0-alpha.0` is published under its label's dist-tag
+   version such as `0.2.0-alpha.0` is staged under its label's dist-tag
    (`alpha`), not `latest`.
+5. A maintainer approves the staged version with 2FA, which publishes it:
+
+   ```sh
+   npm stage list convex-telegram      # find the stage id
+   npm stage download <stage-id>       # optional: inspect the tarball
+   npm stage approve <stage-id>        # or `npm stage reject <stage-id>`
+   ```
+
+The trusted publisher only allows staging, so CI on its own can never make a
+version public.
 
 The release PR is opened with the workflow's built-in token, so CI does not run
-on it; the gate in step 1 runs on the merge commit instead. If publishing fails
+on it; the gate in step 1 runs on the merge commit instead. If staging fails
 after the release was created, fix the cause and use "Re-run failed jobs" on
-that workflow run to publish the same tag.
+that workflow run to stage the same tag.
 
 For quick previews, every PR and push to `main` also gets an installable
 [pkg.pr.new](https://pkg.pr.new) build; the link is posted on the PR.
 
 Trusted publishing is configured on npmjs.com under the package's settings:
-repository `Re11oy/convex-telegram`, workflow `release.yml`, environment `npm`.
+repository `Re11oy/convex-telegram`, workflow `release.yml`, environment `npm`,
+with only `npm stage publish` allowed.
