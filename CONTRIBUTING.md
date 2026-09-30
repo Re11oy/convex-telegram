@@ -68,7 +68,7 @@ the [Release workflow](./.github/workflows/release.yml). Don't bump the version
 or edit [CHANGELOG.md](./CHANGELOG.md) by hand.
 
 1. Every push to `main` first runs the full gate (clean install, build, test,
-   typecheck, lint); nothing below happens unless it passes.
+   typecheck, lint, format check); nothing below happens unless it passes.
 2. release-please then updates an open release PR. It bumps the version in
    `package.json` and adds a CHANGELOG entry based on the commit types since the
    last release: `fix` → patch, `feat` → minor, and while the version is below
@@ -91,6 +91,10 @@ or edit [CHANGELOG.md](./CHANGELOG.md) by hand.
    npm stage download <stage-id>       # optional: inspect the tarball
    npm stage approve <stage-id>        # or `npm stage reject <stage-id>`
    ```
+
+   `npm stage` needs npm 11.15.0 or newer. With an older npm installed, pin an
+   exact version, e.g. `npx npm@11.20.0 stage …`: `npx npm@11` would reuse the
+   installed npm 11.
 
 The trusted publisher only allows staging, so CI on its own can never make a
 version public.

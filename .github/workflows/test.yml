@@ -48,3 +48,4 @@ jobs:
           pnpm test
           pnpm typecheck
           pnpm lint
+          pnpm format:check
