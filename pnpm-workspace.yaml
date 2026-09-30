@@ -9,8 +9,10 @@ allowBuilds:
 # `pnpm install --config.minimumReleaseAge=0` for urgent fixes.
 minimumReleaseAge: 20160
 minimumReleaseAgeExclude:
-  # Type declarations only. Renovate applies a shorter 3-day wait to it instead
-  # (see renovate.json), so new Bot API types ship sooner.
+  # Type declarations only, never executed. Renovate applies a shorter 3-day
+  # wait to it instead (see renovate.json), so new Bot API types ship sooner.
+  # Lock file maintenance may pick up a newer in-range version before that; the
+  # range-bumping release PR still follows once the 3 days pass.
   - "@gramio/types"
 # Renovate only excludes the package a security update bumps, but monorepos like
 # vitest pin sibling packages (@vitest/*) published at the same time. Without
