@@ -18,23 +18,11 @@ npx convex env set TELEGRAM_BOT_TOKEN <your-token>
 
 ## Example app deployments
 
-The example app is hosted on Vercel. Its build (`vercel.json`) builds the
-component, then runs `convex deploy`, which builds the frontend against the
-target Convex deployment and pushes the example's backend there:
+Vercel deploys the example app and its Convex backend together (see
+`vercel.json`): `main` goes to production, other branches get a preview.
 
-- **Production**: every push to `main` deploys the frontend and the prod Convex
-  deployment together, using the `CONVEX_DEPLOY_KEY` production deploy key in
-  Vercel's Production environment.
-- **Preview**: every other branch gets a Vercel preview with its own temporary
-  Convex preview deployment, created from the preview deploy key in Vercel's
-  Preview environment and deleted after 5 days. Bot branches (`renovate/**` and
-  release-please's `release-please--*`) are skipped via `git.deploymentEnabled`
-  in `vercel.json`.
-
-Preview deployments have no `TELEGRAM_BOT_TOKEN`, so the UI and data work but
-anything that calls Telegram fails there. Never give them the prod bot's token:
-a bot has one webhook URL, and `setupWebhook` on a preview would take it from
-prod.
+Previews have no `TELEGRAM_BOT_TOKEN`. Don't give them the prod bot's token: a
+bot has one webhook, and `setupWebhook` on a preview would take it from prod.
 
 ## Checks
 
