@@ -11,46 +11,25 @@ on:
 permissions: {}
 
 jobs:
-  release-please:
-    name: Release PR
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write # commit the release PR branch, create tags and releases
-      issues: write # create and update the release PR labels
-      pull-requests: write # open and update the release PR
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-    steps:
-      # Opens or updates the release PR from Conventional Commits. Merging that
-      # PR tags the release and creates the GitHub release.
-      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
-        id: release
-
-  publish:
-    name: Publish to npm
-    needs: release-please
-    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+  # Runs before release-please, so a release is only tagged from a commit that
+  # passes the full gate.
+  check:
+    name: Check
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # npm trusted publishing is bound to this workflow file and environment.
-    environment: npm
     permissions:
       contents: read
-      id-token: write # OIDC token for npm trusted publishing
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
           persist-credentials: false
 
       - name: Install pnpm
         uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 
-      # No dependency cache: a publishing job must not restore state that other
-      # workflows can write.
+      # No dependency cache in this workflow: it publishes, so it must not
+      # restore state that other workflows can write.
       - name: Node setup
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -67,7 +46,66 @@ jobs:
           pnpm typecheck
           pnpm lint
 
+  release-please:
+    name: Release PR
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # commit the release PR branch, create tags and releases
+      issues: write # create and update the release PR labels
+      pull-requests: write # open and update the release PR
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      # Opens or updates the release PR from Conventional Commits. Merging that
+      # PR tags the release and creates the GitHub release.
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
+
+  # If this job fails after the release was created, fix the cause and use
+  # "Re-run failed jobs": it publishes the same tag again.
+  publish:
+    name: Publish to npm
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # npm trusted publishing is bound to this workflow file and environment.
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write # OIDC token for npm trusted publishing
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Node setup
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.x"
+
+      - name: Install and build
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
       # npm (not pnpm) handles the OIDC exchange for trusted publishing, and
-      # adds a provenance attestation automatically.
+      # adds a provenance attestation automatically. Prereleases such as
+      # 0.2.0-alpha.0 go to their own dist-tag (alpha) instead of `latest`.
       - name: Publish
-        run: npm publish
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          if [[ "$version" == *-* ]]; then
+            prerelease="${version#*-}"
+            npm publish --tag "${prerelease%%.*}"
+          else
+            npm publish
+          fi
