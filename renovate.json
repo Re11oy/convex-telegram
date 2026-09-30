@@ -41,7 +41,7 @@
       "matchPackageNames": ["convex"],
       "automerge": false,
       "prBodyNotes": [
-        "⚠️ Before merging, run `pnpm codegen` on this branch and commit any changes under `src/component/_generated/` and `example/convex/_generated/`, then check that the Vercel preview (which deploys the example backend with this `convex` version) succeeds."
+        "⚠️ Before merging, run `pnpm codegen`, commit any `_generated` changes, and check the Vercel preview."
       ]
     },
     {
