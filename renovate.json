@@ -27,7 +27,7 @@
     },
     {
       "groupName": "Routine updates",
-      "matchPackageNames": ["!@gramio/types"],
+      "matchPackageNames": ["!@gramio/types", "!convex"],
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "automerge": true
     },
@@ -35,6 +35,14 @@
       "matchUpdateTypes": ["major"],
       "automerge": false,
       "dependencyDashboardApproval": true
+    },
+    {
+      "description": "A convex update can change the committed _generated code, and codegen needs a Convex deployment, so Renovate can't regenerate it: open a separate PR without automerge",
+      "matchPackageNames": ["convex"],
+      "automerge": false,
+      "prBodyNotes": [
+        "⚠️ Before merging, run `pnpm codegen` on this branch and commit any changes under `src/component/_generated/` and `example/convex/_generated/`."
+      ]
     },
     {
       "description": "Ship every new @gramio/types (Telegram Bot API types) version as a convex-telegram release: its own fix(deps) PR that raises the range, 3 days after publish, outside the weekend schedule",

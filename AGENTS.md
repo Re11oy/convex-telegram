@@ -23,6 +23,7 @@ through a verified webhook.
 pnpm install
 pnpm dev          # example app + component rebuild (anonymous local backend)
 pnpm build        # tsc build to dist/
+pnpm codegen      # regenerate committed _generated code (component + example)
 pnpm test         # vitest (with typecheck)
 pnpm typecheck    # package + example
 pnpm lint         # eslint
@@ -32,7 +33,11 @@ pnpm format       # prettier --write
 ## Conventions
 
 - Generated code under `_generated/` is committed. Do not edit it by hand; run
-  `pnpm build:codegen` (component) or `pnpm dev` (example) to regenerate.
+  `pnpm codegen` to regenerate both the component and the example app (or
+  `pnpm build:codegen` for the component only; `pnpm dev` does both while it
+  runs). Codegen needs a Convex deployment, so CI can't check it: regenerate
+  whenever the component changes, and on every Renovate `convex` update PR (they
+  don't automerge for this reason).
 - Relative imports use explicit `.js` extensions (NodeNext module resolution).
 - Run `pnpm build && pnpm test && pnpm typecheck && pnpm lint` before
   committing.
