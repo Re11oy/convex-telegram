@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.2](https://github.com/Re11oy/convex-telegram/compare/v0.1.1...v0.1.2) (2026-09-30)
+
+
+### Bug Fixes
+
+* **component:** regenerate code for convex 1.45 ([#26](https://github.com/Re11oy/convex-telegram/issues/26)) ([8bb3e76](https://github.com/Re11oy/convex-telegram/commit/8bb3e765bba499105c59fdf6e571ce0bff8768eb))
+* ship @gramio/types as a dependency ([#24](https://github.com/Re11oy/convex-telegram/issues/24)) ([74059e0](https://github.com/Re11oy/convex-telegram/commit/74059e024e81c97242d85e93729aac225d6829fe))
+
 ## 0.1.1
 
 Client and webhook revamp.
