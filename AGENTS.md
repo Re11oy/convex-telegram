@@ -41,3 +41,6 @@ pnpm format       # prettier --write
   [CONTRIBUTING.md#commits](./CONTRIBUTING.md#commits) first. Summary is an
   imperative `type(scope): …` line; the body explains the "why" (the diff
   already shows the "what"), and only when it isn't obvious.
+- Releases are automated (see
+  [CONTRIBUTING.md#releasing](./CONTRIBUTING.md#releasing)). Never bump the
+  version or edit `CHANGELOG.md` by hand; the commit type decides the release.

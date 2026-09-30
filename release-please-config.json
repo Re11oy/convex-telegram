@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "7304ea64f653d52be10a283d07b3f59ca14ddcc2",
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "package-name": "convex-telegram",
+      "include-component-in-tag": false,
+      "bump-minor-pre-major": true,
+      "exclude-paths": [
+        ".github",
+        ".npmrc",
+        "pnpm-workspace.yaml",
+        "renovate.json"
+      ]
+    }
+  }
+}
