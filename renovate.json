@@ -4,7 +4,6 @@
   "timezone": "Europe/Helsinki",
   "schedule": ["* 6-9 * * 0,6"],
   "automergeSchedule": ["at any time"],
-  "prCreation": "not-pending",
   "minimumReleaseAge": "14 days",
   "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
@@ -16,7 +15,8 @@
   "lockFileMaintenance": {
     "enabled": true,
     "automerge": true,
-    "schedule": ["* 6-9 * * 6"]
+    "schedule": ["* 6-9 * * 6"],
+    "minimumReleaseAge": null
   },
   "packageRules": [
     {
