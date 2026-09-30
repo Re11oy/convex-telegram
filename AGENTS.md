@@ -33,6 +33,9 @@ pnpm format       # prettier --write
 
 - Generated code under `_generated/` is committed. Do not edit it by hand; run
   `pnpm build:codegen` (component) or `pnpm dev` (example) to regenerate.
+  Codegen needs a Convex deployment, so CI can't check it: regenerate whenever
+  the component changes, and on every Renovate `convex` update PR (they don't
+  automerge for this reason).
 - Relative imports use explicit `.js` extensions (NodeNext module resolution).
 - Run `pnpm build && pnpm test && pnpm typecheck && pnpm lint` before
   committing.
