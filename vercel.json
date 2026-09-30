@@ -7,7 +7,8 @@
   "git": {
     "deploymentEnabled": {
       "renovate/**": false,
-      "release-please--*": false
+      "release-please--*": false,
+      "renovate/*convex-monorepo": true
     }
   }
 }

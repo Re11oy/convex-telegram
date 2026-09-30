@@ -29,7 +29,9 @@ target Convex deployment and pushes the example's backend there:
   Convex preview deployment, created from the preview deploy key in Vercel's
   Preview environment and deleted after 5 days. Bot branches (`renovate/**` and
   release-please's `release-please--*`) are skipped via `git.deploymentEnabled`
-  in `vercel.json`.
+  in `vercel.json`, except Renovate's `convex` update branches
+  (`renovate/*convex-monorepo`): their preview checks that the example backend
+  still deploys with the new `convex` before you merge.
 
 Preview deployments have no `TELEGRAM_BOT_TOKEN`, so the UI and data work but
 anything that calls Telegram fails there. Never give them the prod bot's token:
