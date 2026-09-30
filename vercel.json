@@ -3,5 +3,11 @@
   "framework": "vite",
   "installCommand": "pnpm install",
   "buildCommand": "pnpm build && pnpm exec convex deploy --cmd 'vite build example' --cmd-url-env-var-name VITE_CONVEX_URL",
-  "outputDirectory": "example/dist"
+  "outputDirectory": "example/dist",
+  "git": {
+    "deploymentEnabled": {
+      "renovate/**": false,
+      "release-please--*": false
+    }
+  }
 }
