@@ -7,12 +7,7 @@
       "package-name": "convex-telegram",
       "include-component-in-tag": false,
       "bump-minor-pre-major": true,
-      "exclude-paths": [
-        ".github",
-        ".npmrc",
-        "pnpm-workspace.yaml",
-        "renovate.json"
-      ]
+      "exclude-paths": [".github"]
     }
   }
 }

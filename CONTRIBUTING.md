@@ -71,8 +71,10 @@ or edit [CHANGELOG.md](./CHANGELOG.md) by hand.
    `package.json` and adds a CHANGELOG entry based on the commit types since the
    last release: `fix` → patch, `feat` → minor, and while the version is below
    1.0.0 a breaking change also bumps the minor version. PRs are squash-merged,
-   so the PR title is the commit that counts. Commits that only touch
-   `.github/`, `renovate.json`, `pnpm-workspace.yaml` or `.npmrc` are left out.
+   so the PR title is the commit that counts. Use `feat` and `fix` only for
+   changes to the published package; repository tooling (CI, Renovate, pnpm
+   settings) is `ci` or `chore`. Commits that only touch `.github/` are left out
+   either way.
 2. Merging the release PR tags the release (`vX.Y.Z`) and creates the GitHub
    release.
 3. The workflow then runs the full gate (clean install, build, test, typecheck,
