@@ -20,6 +20,12 @@
   },
   "packageRules": [
     {
+      "description": "Override the 3-day npm minimumReleaseAge from config:best-practices",
+      "matchDatasources": ["npm"],
+      "matchUpdateTypes": ["major", "minor", "patch"],
+      "minimumReleaseAge": "14 days"
+    },
+    {
       "groupName": "Routine updates",
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "automerge": true
