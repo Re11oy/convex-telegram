@@ -68,6 +68,9 @@
     "alpha": "pnpm version prerelease --preid alpha && pnpm publish --tag alpha && git push --follow-tags",
     "release": "pnpm version patch && pnpm publish && git push --follow-tags"
   },
+  "dependencies": {
+    "@gramio/types": "^10.3.1"
+  },
   "peerDependencies": {
     "convex": ">=1.29.3"
   },
@@ -75,7 +78,6 @@
     "@convex-dev/eslint-plugin": "4.0.0",
     "@edge-runtime/vm": "5.0.0",
     "@eslint/js": "10.0.1",
-    "@gramio/types": "10.2.2",
     "@types/node": "24.13.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
