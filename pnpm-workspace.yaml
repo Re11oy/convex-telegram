@@ -7,6 +7,8 @@ minimumReleaseAge: 20160
 minimumReleaseAgeExclude:
   # Types only; Renovate applies a 3-day wait to it instead.
   - "@gramio/types"
+  # Renovate security update: vite@8.3.3
+  - vite@8.3.3
 # If no old-enough version satisfies a range (e.g. the @vitest/* siblings of a
 # security fix), use the newer one and add it to minimumReleaseAgeExclude.
 minimumReleaseAgeStrict: false
