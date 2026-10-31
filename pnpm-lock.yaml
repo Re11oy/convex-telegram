@@ -172,7 +172,7 @@ importers:
     devDependencies:
       '@convex-dev/eslint-plugin':
         specifier: 5.0.0
-        version: 5.0.0(convex@1.46.0(react@19.3.1))(eslint@10.13.0)(typescript@6.0.3)
+        version: 5.0.0(convex@1.47.0(react@19.3.1))(eslint@10.13.0)(typescript@6.0.3)
       '@edge-runtime/vm':
         specifier: 5.0.0
         version: 5.0.0
@@ -195,11 +195,11 @@ importers:
         specifier: 3.0.0
         version: 3.0.0
       convex:
-        specifier: 1.46.0
-        version: 1.46.0(react@19.3.1)
+        specifier: 1.47.0
+        version: 1.47.0(react@19.3.1)
       convex-test:
         specifier: 0.0.62
-        version: 0.0.62(convex@1.46.0(react@19.3.1))
+        version: 0.0.62(convex@1.47.0(react@19.3.1))
       esbuild:
         specifier: 0.28.2
         version: 0.28.2
@@ -1076,8 +1076,8 @@ packages:
     peerDependencies:
       convex: ^1.43.0
 
-  convex@1.46.0:
-    resolution: {integrity: sha512-dhBwDQTZDOhi5SUGAX17EWNehCdNq6/UFrSL0eLZuGfMkdsQbCVWVRZCzbZ5CF+/pgvoGxtApbEoTSipqL4JTw==}
+  convex@1.47.0:
+    resolution: {integrity: sha512-B1z/lOmex7i09NASq8+2WG9rZLzGXXOSkpwGOpaNIvOs4awyW4RMgpVBjt8r2wvvHwhEBEsOr2pGYpulnmAxYQ==}
     engines: {node: '>=20.0.0', npm: '>=7.0.0'}
     hasBin: true
     peerDependencies:
@@ -1912,11 +1912,11 @@ snapshots:
       hashery: 1.5.1
       keyv: 5.6.0
 
-  '@convex-dev/eslint-plugin@5.0.0(convex@1.46.0(react@19.3.1))(eslint@10.13.0)(typescript@6.0.3)':
+  '@convex-dev/eslint-plugin@5.0.0(convex@1.47.0(react@19.3.1))(eslint@10.13.0)(typescript@6.0.3)':
     dependencies:
       '@typescript-eslint/types': 8.58.2
       '@typescript-eslint/utils': 8.58.2(eslint@10.13.0)(typescript@6.0.3)
-      convex: 1.46.0(react@19.3.1)
+      convex: 1.47.0(react@19.3.1)
     transitivePeerDependencies:
       - eslint
       - supports-color
@@ -2490,11 +2490,11 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  convex-test@0.0.62(convex@1.46.0(react@19.3.1)):
+  convex-test@0.0.62(convex@1.47.0(react@19.3.1)):
     dependencies:
-      convex: 1.46.0(react@19.3.1)
+      convex: 1.47.0(react@19.3.1)
 
-  convex@1.46.0(react@19.3.1):
+  convex@1.47.0(react@19.3.1):
     dependencies:
       esbuild: 0.27.0
       prettier: 3.9.10
