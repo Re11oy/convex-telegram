@@ -84,20 +84,20 @@
     "@vitejs/plugin-react": "6.1.2",
     "chokidar-cli": "3.0.0",
     "convex": "1.46.0",
-    "convex-test": "0.0.61",
+    "convex-test": "0.0.62",
     "esbuild": "0.28.2",
-    "eslint": "10.12.0",
+    "eslint": "10.13.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-refresh": "0.5.7",
     "globals": "17.13.0",
     "pkg-pr-new": "0.0.91",
     "prettier": "3.9.10",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.71.1",
+    "typescript-eslint": "8.71.2",
     "vite": "8.3.4",
-    "vitest": "5.0.3"
+    "vitest": "5.0.5"
   },
-  "packageManager": "pnpm@12.12.0"
+  "packageManager": "pnpm@12.14.0"
 }
