@@ -2,7 +2,7 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:best-practices"],
   "timezone": "Europe/Helsinki",
-  "schedule": ["* 6-9 * * 0,6"],
+  "schedule": ["* 6-9 1-7 * 0,6"],
   "automergeSchedule": ["at any time"],
   "minimumReleaseAge": "14 days",
   "osvVulnerabilityAlerts": true,
@@ -15,7 +15,7 @@
   "lockFileMaintenance": {
     "enabled": true,
     "automerge": true,
-    "schedule": ["* 6-9 * * 6"],
+    "schedule": ["* 6-9 1-7 * 0,6"],
     "minimumReleaseAge": null
   },
   "packageRules": [
@@ -32,9 +32,11 @@
       "automerge": true
     },
     {
+      "description": "Majors wait for dashboard approval, so don't also wait for the monthly window",
       "matchUpdateTypes": ["major"],
       "automerge": false,
-      "dependencyDashboardApproval": true
+      "dependencyDashboardApproval": true,
+      "schedule": ["at any time"]
     },
     {
       "description": "convex updates change committed _generated code; run pnpm codegen by hand",
