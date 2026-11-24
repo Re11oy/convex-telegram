@@ -69,9 +69,12 @@ jobs:
         if: ${{ steps.release.outputs.prs_created == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          BRANCH: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
-        run:
-          gh workflow run test.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
+          # Raw JSON: step env is evaluated even when `if` is false, and
+          # fromJSON fails on the empty output.
+          PR: ${{ steps.release.outputs.pr }}
+        run: |
+          branch=$(jq -r .headBranchName <<<"$PR")
+          gh workflow run test.yml --repo "$GITHUB_REPOSITORY" --ref "$branch"
 
   # If this fails after tagging, fix the cause and re-run the failed job.
   publish:
