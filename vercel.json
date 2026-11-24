@@ -8,7 +8,7 @@
     "deploymentEnabled": {
       "renovate/**": false,
       "release-please--*": false,
-      "renovate/*convex-monorepo": true
+      "renovate/convex-[0-9]*": true
     }
   }
 }
