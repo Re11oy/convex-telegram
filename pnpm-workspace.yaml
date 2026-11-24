@@ -12,3 +12,9 @@ minimumReleaseAgeExclude:
 # If no old-enough version satisfies a range (e.g. the @vitest/* siblings of a
 # security fix), use the newer one and add it to minimumReleaseAgeExclude.
 minimumReleaseAgeStrict: false
+
+overrides:
+  # GHSA-g3hv-75wg-m249 is fixed in minimatch 11, but @typescript-eslint pins
+  # ^10, so neither Dependabot nor Renovate can update it. Drop this once
+  # @typescript-eslint/typescript-estree allows minimatch 11.
+  minimatch: ^11.0.1
