@@ -51,6 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
+      actions: write # dispatch the required check on the release PR
       contents: write # commit the release PR branch, create tags and releases
       issues: write # create and update the release PR labels
       pull-requests: write # open and update the release PR
@@ -61,6 +62,16 @@ jobs:
       # Updates the release PR; merging it tags the release.
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
+
+      # The release PR is pushed with GITHUB_TOKEN, which doesn't trigger
+      # pull_request workflows, so run the required check on it here.
+      - name: Test the release PR
+        if: ${{ steps.release.outputs.prs_created == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
+        run:
+          gh workflow run test.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
 
   # If this fails after tagging, fix the cause and re-run the failed job.
   publish:
